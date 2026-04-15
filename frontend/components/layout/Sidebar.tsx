@@ -15,6 +15,7 @@ import {
     SidebarFooter,
     useSidebar,
 } from "../ui/sidebar"
+import Link from "next/link"
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -28,15 +29,25 @@ const SidebarLayout = () => {
     const { open } = useSidebar()
 
     return (
-        <Sidebar collapsible="icon" className="overflow-hidden" >
-            <SidebarHeader className="p-4">
-                {open ? (
-                    <Image src="/logoipsum-custom-logo.svg" width={120} height={32} alt="logo" />
+        <Sidebar collapsible="icon" className="overflow-hidden [&_span]:truncate ">
 
-                ) : (
+            <SidebarHeader className="">
 
-                    <Image src="/logoipsum-415.svg" width={32} height={32} alt="logo" />
-                )}
+                <Link href={'/'}>
+                    {open ? (
+                        <Image
+                            src="/logoipsum-custom-logo.svg"
+                            width={120}
+                            height={32}
+                            alt="logo"
+                            loading="eager"
+                            style={{ width: "120px", height: "32px" }}
+                        />
+                    ) : (
+
+                        <Image src="/logoipsum-415.svg" width={30} height={30} alt="logo" loading="eager" />
+                    )}
+                </Link>
             </SidebarHeader>
 
             <SidebarContent>
@@ -44,20 +55,18 @@ const SidebarLayout = () => {
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {navItems.map((item) => (
-                                <SidebarMenuItem key={item.href}>
-                                    <SidebarMenuButton
-                                        asChild
-                                        isActive={pathname === item.href}
-                                        tooltip={item.label}
-                                        size="lg"
-                                        className="overflow-hidden"
-                                    >
-                                        <a href={item.href}>
-                                            <item.icon />
-                                            <span>{item.label}</span>
-                                        </a>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
+                                <SidebarMenuButton
+                                    key={item.href}
+                                    asChild
+                                    isActive={pathname === item.href}
+                                    tooltip={item.label}
+                                    size={'lg'}
+                                >
+                                    <Link href={item.href}>
+                                        <item.icon className="size-6!  " />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                </SidebarMenuButton>
                             ))}
                         </SidebarMenu>
                     </SidebarGroupContent>

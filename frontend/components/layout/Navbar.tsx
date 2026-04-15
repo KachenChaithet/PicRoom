@@ -12,7 +12,6 @@ const NavbarLayout = () => {
                 <Bell className="h-5 w-5 text-muted-foreground cursor-pointer" />
                 <Settings className="h-5 w-5 text-muted-foreground cursor-pointer" />
                 <Avatar>
-                    <AvatarImage src="/avatar.png" />
                     <AvatarFallback>TC</AvatarFallback>
                 </Avatar>
             </div>
