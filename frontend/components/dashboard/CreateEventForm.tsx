@@ -1,13 +1,42 @@
+"use client"
 import { Mail, MapPin } from "lucide-react"
 import { Card } from "../ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "../ui/field"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
+import z from "zod"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+
+const eventSchema = z.object({
+    eventDate: z.coerce.date().refine(d => !isNaN(d.getTime()), {
+        message: "Please select a valid date"
+    }),
+    eventName: z.string().min(1, "Event name is required"),
+    eventLocation: z.string().min(1, "Location is required"),
+})
+
+type EventSchema = z.infer<typeof eventSchema>
 
 const CreateEventForm = () => {
+    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<EventSchema>({
+        resolver: zodResolver(eventSchema),
+        defaultValues: {
+            eventName: "",
+            eventDate: undefined,
+            eventLocation: "",
+        }
+    })
+
+    const onSubmit = (data: EventSchema) => {
+        console.log(data);
+        reset()
+
+    }
+
     return (
         <Card className="p-4 ">
-            <form className="space-y-4">
+            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
                 <FieldGroup>
                     <div className="grid grid-cols-2 gap-4">
 
@@ -15,27 +44,34 @@ const CreateEventForm = () => {
                             <FieldLabel className="text-body-sm font-medium">EVENT NAME</FieldLabel>
                             <div className="relative text-muted-foreground">
                                 <Input
-                                    type="email"
-                                    autoComplete="email"
+                                    {...register('eventName')}
+                                    type="text"
+                                    autoComplete="off"
                                     placeholder="e.g. Summer Solstice SOiree"
                                     className=" bg-primary/10 h-10 text-body-sm text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
-                            <FieldDescription className="text-red-500 text-body-sm">
-                            </FieldDescription>
+                            {errors.eventName && (
+                                <FieldDescription className="text-red-500 text-body-sm">
+                                    {errors.eventName.message}
+                                </FieldDescription>
+                            )}
                         </Field>
                         <Field>
                             <FieldLabel className="text-body-sm font-medium">EVENT DATE</FieldLabel>
                             <div className="relative text-muted-foreground">
                                 <Input
+                                    {...register('eventDate')}
                                     type="date"
-                                    autoComplete="email"
-                                    placeholder="teacher@email.com"
+                                    autoComplete="off"
                                     className=" bg-primary/10 h-10 text-body-sm text-foreground placeholder:text-muted-foreground"
                                 />
                             </div>
-                            <FieldDescription className="text-red-500 text-body-sm">
-                            </FieldDescription>
+                            {errors.eventDate && (
+                                <FieldDescription className="text-red-500 text-body-sm">
+                                    {errors.eventDate.message}
+                                </FieldDescription>
+                            )}
                         </Field>
                     </div>
 
@@ -44,21 +80,27 @@ const CreateEventForm = () => {
                         <div className="relative text-muted-foreground">
                             <MapPin className="absolute left-3 top-3.5 h-4 w-4" />
                             <Input
-                                type="email"
-                                autoComplete="email"
+                                {...register('eventLocation')}
+                                type="text"
+                                autoComplete="off"
                                 placeholder="Search for a venue or address"
                                 className="pl-10 bg-primary/10 h-10 text-body-sm text-foreground placeholder:text-muted-foreground"
                             />
                         </div>
-                        <FieldDescription className="text-red-500 text-body-sm">
-                        </FieldDescription>
+                        {errors.eventLocation && (
+                            <FieldDescription className="text-red-500 text-body-sm">
+                                {errors.eventLocation.message}
+                            </FieldDescription>
+                        )}
                     </Field>
                 </FieldGroup>
                 <div className="flex justify-between">
-                    <p className="w-85">By creating this event, you agree to our Editorial Terms of Service and Privacy Policy regarding guest data.</p>
+                    <p className="max-w-85 ">By creating this event, you agree to our Editorial Terms of Service and Privacy Policy regarding guest data.</p>
                     <Button
                         size={'lg'}
                         className="rounded-full"
+                        type="submit"
+                        disabled={isSubmitting}
                     >
                         Generate Souvenir Key
                     </Button>
