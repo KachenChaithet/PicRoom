@@ -1,4 +1,3 @@
-"use client"
 import { Mail, MapPin } from "lucide-react"
 import { Card } from "../ui/card"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "../ui/field"
@@ -16,9 +15,13 @@ const eventSchema = z.object({
     eventLocation: z.string().min(1, "Location is required"),
 })
 
-type EventSchema = z.infer<typeof eventSchema>
+export type EventSchema = z.infer<typeof eventSchema>
 
-const CreateEventForm = () => {
+interface CreateEventFormProps {
+    onSubmit: (data: EventSchema) => void
+}
+
+const CreateEventForm = ({ onSubmit }: CreateEventFormProps) => {
     const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<EventSchema>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
@@ -28,15 +31,15 @@ const CreateEventForm = () => {
         }
     })
 
-    const onSubmit = (data: EventSchema) => {
-        console.log(data);
+    const handleFormSubmit = (data: EventSchema) => {
+        onSubmit(data)
         reset()
 
     }
 
     return (
         <Card className="p-4 ">
-            <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
+            <form className="space-y-4" onSubmit={handleSubmit(handleFormSubmit)}>
                 <FieldGroup>
                     <div className="grid grid-cols-2 gap-4">
 
@@ -107,7 +110,6 @@ const CreateEventForm = () => {
                 </div>
 
             </form>
-
 
 
         </Card >
