@@ -2,6 +2,8 @@ import EventHero from "@/components/event/EventHero"
 import RecentSouvenirs from "@/components/event/RecentSouvenirs"
 import { Card } from "@/components/ui/card"
 import Image from "next/image"
+import { notFound } from "next/navigation"
+import Loading from "./loading"
 
 type PageProps = {
     params: Promise<{ key: string }>
@@ -9,6 +11,7 @@ type PageProps = {
 
 const EventPage = async ({ params }: PageProps) => {
     const { key } = await params
+    if (key !== 'Hee') notFound()
     return (
         <div className="space-y-4">
             <EventHero
@@ -25,7 +28,7 @@ const EventPage = async ({ params }: PageProps) => {
 
             </div>
 
-        </div>
+        // </div>
     )
 }
 export default EventPage 

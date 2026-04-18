@@ -17,36 +17,32 @@ const photos = [
     { id: 8, src: "https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1200", height: 480 },
 ]
 const RecentSouvenirs = () => {
+    const [tab, setTab] = useState<'gallery' | 'upload'>('gallery')
     const [selected, setSelected] = useState<number | null>(null)
     const prev = () => setSelected(i => i !== null ? (i - 1 + photos.length) % photos.length : null)
     const next = () => setSelected(i => i !== null ? (i + 1) % photos.length : null)
 
     const [preview, setPreview] = useState<string[]>([])
     const [files, setFiles] = useState<File[]>([])
+    const previewRef = useRef<string[]>([]) // กัน preview get ค่า mount จาก render 1 
+
 
     const upload = useRef<HTMLInputElement>(null)
-    useEffect(() => {
-        const handleKey = (e: KeyboardEvent) => {
-            if (e.key === "ArrowLeft") prev()
-            if (e.key === "ArrowRight") next()
-            if (e.key === "Escape") setSelected(null)
-
-        }
-        window.addEventListener("keydown", handleKey)
-        return () => window.removeEventListener("keydown", handleKey)
-    }, [])
 
     const removeImage = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index))
         setPreview(prev => {
             URL.revokeObjectURL(prev[index])
-            return prev.filter((_, i) => i !== index)
+            const next = prev.filter((_, i) => i !== index)
+            previewRef.current = next
+            return next
         })
     }
-    console.log(files);
-    console.log(preview);
+    console.log(tab);
 
-    const handleChage = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const input = e.target.files
         if (!input) return
 
@@ -61,9 +57,32 @@ const RecentSouvenirs = () => {
             URL.createObjectURL(file)
         )
         setFiles(prev => [...prev, ...filtered])
-        setPreview(prev => [...prev, ...urls])
+        setPreview(prev => {
+            const next = [...prev, ...urls]
+            previewRef.current = next
+            return next
+        })
         e.target.value = ""
     }
+    useEffect(() => {
+        const handleKey = (e: KeyboardEvent) => {
+            if (e.key === "ArrowLeft") setSelected(i => i !== null ? (i - 1 + photos.length) % photos.length : null)
+            if (e.key === "ArrowRight") setSelected(i => i !== null ? (i + 1) % photos.length : null)
+
+            if (e.key === "Escape") setSelected(null)
+
+        }
+        window.addEventListener("keydown", handleKey)
+        return () => window.removeEventListener("keydown", handleKey)
+    }, [])
+
+    useEffect(() => {
+        return () => {
+            console.log("unmount cleanup, revoking:", previewRef.current)
+            previewRef.current.forEach(url => URL.revokeObjectURL(url))
+        }
+    }, [])
+
     return (
         <div className="grid md:grid-cols-3 gap-10">
 
@@ -92,12 +111,12 @@ const RecentSouvenirs = () => {
                 </div>
             </div>
 
-            {/* upload */}
-            <div className="space-y-4 order-1 md:order-2  ">
+            {/* upload dasktop*/}
+            <div className="space-y-4 order-1 md:order-2  hidden md:block">
 
                 <div className="space-y-2">
                     <h1 className="text-h2">Contribute</h1>
-                    <p className="max-w-80">Join the curation. Evenry photo shared becomes a part of the official digital heirloom for the Wedding Gala.</p>
+                    <p className="max-w-80">Join the curation. Every photo shared becomes a part of the official digital heirloom for the Wedding Gala.</p>
                 </div>
                 {files.length === 0 ? (
                     <div className="space-y-4">
@@ -124,7 +143,7 @@ const RecentSouvenirs = () => {
                                 </div>
                                 <div className="max-w-50 border p-4 rounded-4xl">
                                     <h1 className="text-h2">82</h1>
-                                    <p className="text-xs">LIVEREACTIONS</p>
+                                    <p className="text-xs">LIVE REACTIONS</p>
                                 </div>
                             </div>
                         </div>
@@ -191,7 +210,69 @@ const RecentSouvenirs = () => {
                     </div>
 
                 )}
-                <Input type="file" className="hidden" ref={upload} multiple onChange={handleChage} />
+                <Input type="file" className="hidden" ref={upload} multiple onChange={handleChange} />
+            </div>
+
+            {/* tab mobile */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t flex md:hidden">
+                <button
+                    onClick={() => setTab('gallery')}
+                    className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                        ${tab === 'gallery' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                    <Camera className="size-5" />
+                    Gallery
+                </button>
+                <button
+                    onClick={() => setTab('upload')}
+                    className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                        ${tab === 'upload' ? 'text-primary' : 'text-muted-foreground'}`}
+                >
+                    <Plus className="size-5" />
+                    Upload
+                </button>
+            </div>
+
+            {/* upload mobile  */}
+            <div className={`fixed inset-x-0 bottom-16 z-30 bg-background rounded-t-3xl border-t shadow-xl transition-transform duration-300 md:hidden
+                 ${tab === 'upload' ? 'translate-y-0' : 'translate-y-full'}`}
+            >
+                <div className="p-4 max-h-[80vh] overflow-y-auto space-y-4">
+                    <h1 className="text-h2">Contribute</h1>
+                    {files.length === 0 ? (
+                        <div className="flex justify-end gap-2">
+                            <Button size={'lg'} variant={'ghost'} onClick={() => setTab('gallery')}>Cancle</Button>
+                            <Button size={'lg'} onClick={() => upload.current?.click()}>Upload</Button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <Button className="rounded-full w-full" variant={'outline'} onClick={() => upload.current?.click()}>
+                                <Plus /> ADD MORE FILES
+                            </Button>
+                            <p>{files.length} memories selected</p>
+                            <div className="grid grid-cols-3 gap-2">
+                                {files.map((file, i) => (
+                                    <div key={i} className="relative">
+                                        <img src={preview[i]} className="w-full h-24 object-cover rounded-xl" />
+                                        <span
+                                            className="absolute top-1 right-1 bg-primary text-white rounded-full p-1"
+                                            onClick={() => removeImage(i)}
+                                        >
+                                            <X className="size-3" />
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            <Button size={'lg'} className="rounded-full font-semibold w-full">UPLOAD ALL</Button>
+                            <button className="text-xs font-semibold w-full" onClick={() => {
+                                setFiles([])
+                                setTab('gallery')
+                                preview.forEach(url => URL.revokeObjectURL(url))
+                                setPreview([])
+                            }}>CANCEL</button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {selected !== null && (
@@ -206,7 +287,12 @@ const RecentSouvenirs = () => {
                     >
                         <ArrowLeft />
                     </Button>
-                    <img src={photos[selected].src} className="object-contain max-h-screen max-w-screen " />
+                    <img
+                        src={photos[selected].src}
+                        className="object-contain max-h-screen max-w-screen "
+                        onClick={(e) => e.stopPropagation()}
+
+                    />
                     <Button
                         onClick={(e) => { e.stopPropagation(); next() }}
                         variant={'outline'}
@@ -219,6 +305,7 @@ const RecentSouvenirs = () => {
                 </div>
             )}
         </div>
+
     )
 }
 export default RecentSouvenirs

@@ -13,7 +13,7 @@ const EventSuccessBanner = ({ data }: { data: EventSuccessData }) => {
     const handleInviteEmail = () => { /* open email client */ }
 
     return (
-        <div className="bg-green-50 rounded-2xl p-6 flex gap-6 items-center">
+        <div className="bg-green-50 rounded-2xl p-6 flex md:flex-row flex-col gap-6 items-center">
             {/* Left — QR */}
             <SouvenirQRCode url={data.shareableUrl} />
 
