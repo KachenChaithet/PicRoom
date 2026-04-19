@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, Plus, X } from "lucide-react"
 import { Input } from "../ui/input"
+import * as faceapi from "face-api.js"
 
 const photos = [
     { id: 1, src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", height: 300 },
@@ -15,13 +16,124 @@ const photos = [
     { id: 6, src: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=400", height: 420 },
     { id: 7, src: "https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600", height: 320 },
     { id: 8, src: "https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1200", height: 480 },
+    { id: 9, src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", height: 500 },
+    { id: 10, src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", height: 500 },
+    { id: 11, src: "/IMG20250815092059.jpg", height: 500 },
+    { id: 12, src: "/IMG20250928002212.jpg", height: 500 },
+    { id: 13, src: "/IMG20250815150258.jpg", height: 500 },
+    { id: 14, src: "/IMG20250214135630.jpg", height: 500 },
+    { id: 15, src: "/IMG20240104104957.jpg", height: 500 },
+    { id: 16, src: "/IMG20231218123200.jpg ", height: 500 },
 ]
+
+type FaceGroup = {
+    descriptors: Float32Array[]
+    photoIds: number[]
+}
 const RecentSouvenirs = () => {
     const [tab, setTab] = useState<'gallery' | 'upload'>('gallery')
     const [selected, setSelected] = useState<number | null>(null)
-    const prev = () => setSelected(i => i !== null ? (i - 1 + photos.length) % photos.length : null)
-    const next = () => setSelected(i => i !== null ? (i + 1) % photos.length : null)
+    const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
+    const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
+    const [modelsLoaded, setModelsLoaded] = useState(false)
+    const [faceIndex, setfaceIndex] = useState<Map<number, Float32Array[]>>(new Map())
+    const [groups, setGroups] = useState<Map<number, FaceGroup>>(new Map())
+    const [selectedGroup, setSelectedGroup] = useState<number | null>(null)
+    const [isIndexing, setIsIndexing] = useState(false)
+
+    const visiblePhotos = selectedGroup !== null
+        ? photos.filter(photo =>
+            groups.get(selectedGroup)?.photoIds.includes(photo.id)
+        )
+        : photos
+
+
+    const clusterFaces = (faceIndex: Map<number, Float32Array[]>) => {
+        const groups = new Map<number, FaceGroup>()
+        let groupId = 0
+
+        // รวมทุกหน้าก่อน
+        const allFaces: { photoId: number, descriptor: Float32Array }[] = []
+        for (const [photoId, descriptors] of faceIndex) {
+            for (const descriptor of descriptors) {
+                allFaces.push({ photoId, descriptor })
+            }
+        }
+
+        // แล้วค่อย cluster
+        for (const { photoId, descriptor } of allFaces) {
+            let matched = false
+
+            for (const [gId, group] of groups) {
+                const distance = faceapi.euclideanDistance(descriptor, group.descriptors[0])
+                if (distance < 0.5) {
+                    group.descriptors.push(descriptor)
+                    group.photoIds.push(photoId)
+                    matched = true
+                    break
+                }
+            }
+
+            if (!matched) {
+                groups.set(groupId++, {
+                    descriptors: [descriptor],
+                    photoIds: [photoId]
+                })
+            }
+        }
+        return groups
+    }
+
+    const CACHE_KEY = "face_descriptors_v1"
+    const BATCH_SIZE = 4
+
+    const indexPhotos = async () => {
+        setIsIndexing(true)
+        const map = new Map<number, Float32Array[]>()
+
+        const cached = localStorage.getItem(CACHE_KEY)
+        const cacheMap: Record<number, number[][]> = cached ? JSON.parse(cached) : {}
+
+        for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+            const batch = photos.slice(i, i + BATCH_SIZE)
+
+            const results = await Promise.all(
+                batch.map(async (photo) => {
+                    if (cacheMap[photo.id]) {
+                        return {
+                            id: photo.id,
+                            descriptors: cacheMap[photo.id].map(d => new Float32Array(d))
+                        }
+                    }
+
+                    const img = await faceapi.fetchImage(photo.src)
+                    const detections = await faceapi
+                        .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
+                            inputSize: 416,
+                            scoreThreshold: 0.3
+                        }))
+                        .withFaceLandmarks()
+                        .withFaceDescriptors()
+
+                    const descriptors = detections.map(d => d.descriptor)
+                    cacheMap[photo.id] = descriptors.map(d => Array.from(d))
+                    return { id: photo.id, descriptors }
+                })
+            )
+
+            for (const { id, descriptors } of results) {
+                map.set(id, descriptors)
+            }
+
+            // update UI หลังแต่ละ batch
+            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheMap))
+            setGroups(clusterFaces(map))
+        }
+
+        setfaceIndex(map)
+        setIsIndexing(false)
+    }
     const [preview, setPreview] = useState<string[]>([])
     const [files, setFiles] = useState<File[]>([])
     const previewRef = useRef<string[]>([]) // กัน preview get ค่า mount จาก render 1 
@@ -38,7 +150,6 @@ const RecentSouvenirs = () => {
             return next
         })
     }
-    console.log(tab);
 
 
 
@@ -64,10 +175,12 @@ const RecentSouvenirs = () => {
         })
         e.target.value = ""
     }
+
+    // shorthand keyboard
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
-            if (e.key === "ArrowLeft") setSelected(i => i !== null ? (i - 1 + photos.length) % photos.length : null)
-            if (e.key === "ArrowRight") setSelected(i => i !== null ? (i + 1) % photos.length : null)
+            if (e.key === "ArrowLeft") setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
+            if (e.key === "ArrowRight") setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
             if (e.key === "Escape") setSelected(null)
 
@@ -76,6 +189,7 @@ const RecentSouvenirs = () => {
         return () => window.removeEventListener("keydown", handleKey)
     }, [])
 
+    // remove url revoke
     useEffect(() => {
         return () => {
             console.log("unmount cleanup, revoking:", previewRef.current)
@@ -83,21 +197,61 @@ const RecentSouvenirs = () => {
         }
     }, [])
 
+
+    // load models
+    useEffect(() => {
+        const load = async () => {
+            await faceapi.nets.tinyFaceDetector.loadFromUri("/models")
+            await faceapi.nets.faceLandmark68Net.loadFromUri("/models")
+            await faceapi.nets.faceRecognitionNet.loadFromUri("/models")
+            console.log("model loaded")
+            setModelsLoaded(true)
+        }
+        load()
+    }, [])
+
+    // is modelsready detection photos
+    useEffect(() => {
+        if (!modelsLoaded) return
+        indexPhotos()
+    }, [modelsLoaded])
     return (
         <div className="grid md:grid-cols-3 gap-10">
 
             {/* gallery */}
             <div className="col-span-2 order-2 md:order-1">
+                {isIndexing && (
+                    <span className="text-xs text-muted-foreground animate-pulse">
+                        กำลังจำแนกใบหน้า...
+                    </span>
+                )}
+                <div className="flex gap-2 flex-wrap my-2">
+                    <button
+                        onClick={() => setSelectedGroup(null)}
+                        className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === null ? 'bg-primary text-white' : ''}`}
+                    >
+                        All
+                    </button>
+                    {Array.from(groups.entries()).map(([gId, group]) => (
+                        <button
+                            key={gId}
+                            onClick={() => setSelectedGroup(gId)}
+                            className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === gId ? 'bg-primary text-white' : ''}`}
+                        >
+                            Person {gId + 1} ({group.photoIds.length})
+                        </button>
+                    ))}
+                </div>
                 <div className="flex justify-between">
                     <h1 className="text-h2 text-primary">Recent Souvenirs</h1>
-                    <div className="space-x-4">
-                        <Badge className="rounded-sm" variant={'secondary'}>428 Photos</Badge>
-                        <Badge className="rounded-sm" variant={'secondary'}>12 Contributors</Badge>
+                    <div className="space-x-4 flex  place-items-center">
+                        <Badge className="rounded-sm" variant={'secondary'}>{photos.length} Photos</Badge>
+                        <Badge className="rounded-sm" variant={'secondary'}>8 Contributors</Badge>
                     </div>
                 </div>
 
                 <div className=" columns-2 gap-4">
-                    {photos.map((photo, index) => (
+                    {visiblePhotos.map((photo, index) => (
                         <div key={photo.id} className="mb-3 break-inside-avoid">
                             <img
                                 onClick={() => setSelected(index)}
@@ -288,7 +442,7 @@ const RecentSouvenirs = () => {
                         <ArrowLeft />
                     </Button>
                     <img
-                        src={photos[selected].src}
+                        src={visiblePhotos[selected].src}
                         className="object-contain max-h-screen max-w-screen "
                         onClick={(e) => e.stopPropagation()}
 
