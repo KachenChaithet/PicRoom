@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+
+# Uploads (ถ้ามีในอนาคต)
+uploads/
+results/
+
+# Environment variables
+.env

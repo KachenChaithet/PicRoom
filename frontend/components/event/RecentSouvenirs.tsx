@@ -6,6 +6,7 @@ import { Button } from "../ui/button"
 import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, Plus, X } from "lucide-react"
 import { Input } from "../ui/input"
 import * as faceapi from "face-api.js"
+import axios from "axios"
 
 const photos = [
     { id: 1, src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", height: 300 },
@@ -24,6 +25,8 @@ const photos = [
     { id: 14, src: "/IMG20250214135630.jpg", height: 500 },
     { id: 15, src: "/IMG20240104104957.jpg", height: 500 },
     { id: 16, src: "/IMG20231218123200.jpg ", height: 500 },
+    { id: 17, src: "/MS_Musk_Elon_CloseUp.jpg ", height: 500 },
+    { id: 18, src: "/b34f22f0-3c7a-11f0-a0e7-01d93af84155.jpg ", height: 500 },
 ]
 
 type FaceGroup = {
@@ -36,8 +39,6 @@ const RecentSouvenirs = () => {
     const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
     const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
-    const [modelsLoaded, setModelsLoaded] = useState(false)
-    const [faceIndex, setfaceIndex] = useState<Map<number, Float32Array[]>>(new Map())
     const [groups, setGroups] = useState<Map<number, FaceGroup>>(new Map())
     const [selectedGroup, setSelectedGroup] = useState<number | null>(null)
     const [isIndexing, setIsIndexing] = useState(false)
@@ -49,97 +50,53 @@ const RecentSouvenirs = () => {
         : photos
 
 
-    const clusterFaces = (faceIndex: Map<number, Float32Array[]>) => {
-        const groups = new Map<number, FaceGroup>()
-        let groupId = 0
 
-        // รวมทุกหน้าก่อน
-        const allFaces: { photoId: number, descriptor: Float32Array }[] = []
-        for (const [photoId, descriptors] of faceIndex) {
-            for (const descriptor of descriptors) {
-                allFaces.push({ photoId, descriptor })
-            }
-        }
-
-        // แล้วค่อย cluster
-        for (const { photoId, descriptor } of allFaces) {
-            let matched = false
-
-            for (const [gId, group] of groups) {
-                const distance = faceapi.euclideanDistance(descriptor, group.descriptors[0])
-                if (distance < 0.5) {
-                    group.descriptors.push(descriptor)
-                    group.photoIds.push(photoId)
-                    matched = true
-                    break
-                }
-            }
-
-            if (!matched) {
-                groups.set(groupId++, {
-                    descriptors: [descriptor],
-                    photoIds: [photoId]
-                })
-            }
-        }
-        return groups
-    }
-
-    const CACHE_KEY = "face_descriptors_v1"
-    const BATCH_SIZE = 4
-
-    const indexPhotos = async () => {
-        setIsIndexing(true)
-        const map = new Map<number, Float32Array[]>()
-
-        const cached = localStorage.getItem(CACHE_KEY)
-        const cacheMap: Record<number, number[][]> = cached ? JSON.parse(cached) : {}
-
-        for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-            const batch = photos.slice(i, i + BATCH_SIZE)
-
-            const results = await Promise.all(
-                batch.map(async (photo) => {
-                    if (cacheMap[photo.id]) {
-                        return {
-                            id: photo.id,
-                            descriptors: cacheMap[photo.id].map(d => new Float32Array(d))
-                        }
-                    }
-
-                    const img = await faceapi.fetchImage(photo.src)
-                    const detections = await faceapi
-                        .detectAllFaces(img, new faceapi.TinyFaceDetectorOptions({
-                            inputSize: 416,
-                            scoreThreshold: 0.3
-                        }))
-                        .withFaceLandmarks()
-                        .withFaceDescriptors()
-
-                    const descriptors = detections.map(d => d.descriptor)
-                    cacheMap[photo.id] = descriptors.map(d => Array.from(d))
-                    return { id: photo.id, descriptors }
-                })
-            )
-
-            for (const { id, descriptors } of results) {
-                map.set(id, descriptors)
-            }
-
-            // update UI หลังแต่ละ batch
-            localStorage.setItem(CACHE_KEY, JSON.stringify(cacheMap))
-            setGroups(clusterFaces(map))
-        }
-
-        setfaceIndex(map)
-        setIsIndexing(false)
-    }
     const [preview, setPreview] = useState<string[]>([])
     const [files, setFiles] = useState<File[]>([])
     const previewRef = useRef<string[]>([]) // กัน preview get ค่า mount จาก render 1 
 
 
     const upload = useRef<HTMLInputElement>(null)
+
+    const onSubmit = async () => {
+        if (files.length === 0) return
+        const formData = new FormData()
+        files.forEach(file => formData.append("files", file))
+
+        try {
+            const res = await axios.post("http://localhost:8000/detect", formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+                timeout: 60000,
+                onUploadProgress: (e) => {
+                    const percent = Math.round((e.loaded * 100) / (e.total ?? 1))
+                    console.log(`${percent}%`) // เปลี่ยนเป็น setState ถ้าอยาก show progress bar
+                },
+            })
+
+            // แปลง response → Map<number, FaceGroup>
+            const newGroups = new Map<number, FaceGroup>()
+            res.data.groups.forEach((group: any, index: number) => {
+                newGroups.set(index, {
+                    descriptors: [new Float32Array(group.descriptor_rep)],
+                    photoIds: group.photo_ids.map((filename: string) => {
+                        // map filename กลับเป็น photo.id
+                        const photo = photos.find(p => p.src.endsWith(filename) || p.src.includes(filename))
+                        return photo?.id ?? -1
+                    }).filter((id: number) => id !== -1),
+                })
+            })
+
+            setGroups(newGroups)
+            console.log(groups);
+            
+            setFiles([])
+            preview.forEach(url => URL.revokeObjectURL(url))
+            setPreview([])
+            setTab('gallery') // กลับไป gallery อัตโนมัติ (mobile)
+        } catch (err) {
+            console.error(err)
+        }
+    }
 
     const removeImage = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index))
@@ -152,6 +109,7 @@ const RecentSouvenirs = () => {
     }
 
 
+console.log(groups);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const input = e.target.files
@@ -198,23 +156,8 @@ const RecentSouvenirs = () => {
     }, [])
 
 
-    // load models
-    useEffect(() => {
-        const load = async () => {
-            await faceapi.nets.tinyFaceDetector.loadFromUri("/models")
-            await faceapi.nets.faceLandmark68Net.loadFromUri("/models")
-            await faceapi.nets.faceRecognitionNet.loadFromUri("/models")
-            console.log("model loaded")
-            setModelsLoaded(true)
-        }
-        load()
-    }, [])
 
-    // is modelsready detection photos
-    useEffect(() => {
-        if (!modelsLoaded) return
-        indexPhotos()
-    }, [modelsLoaded])
+
     return (
         <div className="grid md:grid-cols-3 gap-10">
 
@@ -346,7 +289,7 @@ const RecentSouvenirs = () => {
                             ))}
                         </div>
                         <div className="flex flex-col gap-2">
-                            <Button size={'lg'} className="rounded-full font-semibold">UPLOAD ALL</Button>
+                            <Button size={'lg'} className="rounded-full font-semibold" onClick={onSubmit}>UPLOAD ALL</Button>
                             <button
                                 className="text-xs font-semibold"
                                 onClick={() => {
