@@ -95,6 +95,7 @@ const RecentSouvenirs = () => {
             setTab('gallery') // กลับไป gallery อัตโนมัติ (mobile)
         } catch (err) {
             console.error(err)
+            alert('error')
         }
     }
 

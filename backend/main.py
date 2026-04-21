@@ -6,6 +6,8 @@ import cv2
 from typing import List
 import gc
 
+from config import supabase
+
 app = FastAPI()
 
 app.add_middleware(
@@ -21,6 +23,7 @@ app.add_middleware(
 THRESHOLD = 0.4
 IMG_SIZE = 640
 
+
 # ---------------------------
 # UTILS
 # ---------------------------
@@ -29,19 +32,24 @@ def resize_keep_ratio(img):
     scale = IMG_SIZE / max(h, w)
     return cv2.resize(img, (int(w * scale), int(h * scale)))
 
+
 def is_valid_face(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.Laplacian(gray, cv2.CV_64F).var() > 80
+
 
 def normalize(v):
     v = np.array(v, dtype="float32")
     return v / np.linalg.norm(v)
 
+
 def cosine_distance_fast(a, b):
     return 1 - np.dot(a, b)  # normalized แล้ว
 
+
 def get_min_distance(desc, group_descs):
     return min(cosine_distance_fast(desc, g) for g in group_descs)
+
 
 # ---------------------------
 # CLUSTER (logic เดิม แต่ optimize)
@@ -63,10 +71,12 @@ def cluster_faces(all_faces: list) -> list:
             best_group["descriptors"].append(face["descriptor"])
             best_group["photo_ids"].add(face["photo_id"])
         else:
-            groups.append({
-                "descriptors": [face["descriptor"]],
-                "photo_ids": set([face["photo_id"]])
-            })
+            groups.append(
+                {
+                    "descriptors": [face["descriptor"]],
+                    "photo_ids": set([face["photo_id"]]),
+                }
+            )
 
     # merge group
     merged = True
@@ -86,10 +96,14 @@ def cluster_faces(all_faces: list) -> list:
             if merged:
                 break
 
-    return [{
-        "descriptor_rep": np.mean(g["descriptors"], axis=0).tolist(),
-        "photo_ids": list(g["photo_ids"])
-    } for g in groups]
+    return [
+        {
+            "descriptor_rep": np.mean(g["descriptors"], axis=0).tolist(),
+            "photo_ids": list(g["photo_ids"]),
+        }
+        for g in groups
+    ]
+
 
 # ---------------------------
 # API
@@ -118,7 +132,7 @@ async def detect(files: List[UploadFile] = File(...)):
                 img_path=img,
                 model_name="Facenet512",
                 enforce_detection=False,
-                detector_backend="ssd"  # 🔥 ลด RAM หนัก ๆ
+                detector_backend="ssd",  # 🔥 ลด RAM หนัก ๆ
             )
         except:
             del img, nparr
@@ -128,10 +142,7 @@ async def detect(files: List[UploadFile] = File(...)):
 
         for r in result:
             emb = normalize(r["embedding"])  # float32
-            all_faces.append({
-                "photo_id": file.filename,
-                "descriptor": emb
-            })
+            all_faces.append({"photo_id": file.filename, "descriptor": emb})
 
         # 🔥 เคลียร์ memory ทันที
         del img, nparr, result
@@ -139,7 +150,10 @@ async def detect(files: List[UploadFile] = File(...)):
 
     groups = cluster_faces(all_faces)
 
-    return {
-        "total_faces": len(all_faces),
-        "groups": groups
-    }
+    return {"total_faces": len(all_faces), "groups": groups}
+
+
+@app.get("/")
+async def read_item():
+    res = supabase.table("photos").select("*").execute()
+    return res.data
