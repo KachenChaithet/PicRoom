@@ -6,7 +6,6 @@ import cv2
 from typing import List
 import gc
 
-from config import supabase
 
 app = FastAPI()
 
@@ -152,8 +151,3 @@ async def detect(files: List[UploadFile] = File(...)):
 
     return {"total_faces": len(all_faces), "groups": groups}
 
-
-@app.get("/")
-async def read_item():
-    res = supabase.table("photos").select("*").execute()
-    return res.data
