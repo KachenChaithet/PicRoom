@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from typing import List
 import gc
+from routers import rooms
 
 
 app = FastAPI()
@@ -22,6 +23,8 @@ app.add_middleware(
 THRESHOLD = 0.4
 IMG_SIZE = 640
 
+
+app.include_router(rooms.router)
 
 # ---------------------------
 # UTILS
