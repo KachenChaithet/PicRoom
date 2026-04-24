@@ -6,6 +6,7 @@ import cv2
 from typing import List
 import gc
 from routers import rooms
+from routers import image
 
 
 app = FastAPI()
@@ -25,6 +26,8 @@ IMG_SIZE = 640
 
 
 app.include_router(rooms.router)
+app.include_router(image.router)
+
 
 # ---------------------------
 # UTILS
@@ -153,4 +156,3 @@ async def detect(files: List[UploadFile] = File(...)):
     groups = cluster_faces(all_faces)
 
     return {"total_faces": len(all_faces), "groups": groups}
-

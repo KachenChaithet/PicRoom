@@ -7,10 +7,10 @@ class ImageCreate(BaseModel):
     cloudinary_url: str
     cloudinary_public_id: str
     status: str
-    room_id: str
+    room_id: int
     username: str
 
 
 class ImageResponse(ImageCreate):
     id: int
-    created_at: datetime
+    uploaded_at: datetime
