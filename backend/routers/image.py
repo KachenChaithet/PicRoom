@@ -108,3 +108,32 @@ async def get_face_groups(
             for cid, urls in groups.items()
         ]
     }
+
+@router.get("/room/{room_id}",response_model=list[ImageResponse])
+async def get_face(
+    room_id:int,
+    db:AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Image).where(Image.room_id == room_id)
+    )
+    images = result.scalars().all()
+    return images
+
+@router.delete("/{image_id}")
+async def delete_imaeg(
+    image_id:int,
+    db:AsyncSession = Depends(get_db)
+):
+    result = await db.excute(
+        select(Image).where(Image.id == image_id)
+    )
+    image = result.scalars_one_or_one()
+    
+    if not image:
+        return {"message":"imaeg not found"}
+    
+    await db.delete(image)
+    await db.commit()
+    
+    return {"message":f"deleted {image_id}"}

@@ -3,49 +3,70 @@ import Image from "next/image"
 import { Badge } from "../ui/badge"
 import React, { useEffect, useRef, useState } from "react"
 import { Button } from "../ui/button"
-import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, Plus, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, EllipsisVertical, Plus, X } from "lucide-react"
 import { Input } from "../ui/input"
 import * as faceapi from "face-api.js"
 import axios from "axios"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 
-const photos = [
-    { id: 1, src: "https://images.unsplash.com/photo-1519741497674-611481863552?w=1200", height: 300 },
-    { id: 2, src: "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?w=600", height: 450 },
-    { id: 3, src: "https://images.unsplash.com/photo-1465495976277-4387d4b0b4c6?w=900", height: 350 },
-    { id: 4, src: "https://images.unsplash.com/photo-1606800052052-a08af7148866?w=800", height: 500 },
-    { id: 5, src: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=600", height: 280 },
-    { id: 6, src: "https://images.unsplash.com/photo-1529636798458-92182e662485?w=400", height: 420 },
-    { id: 7, src: "https://images.unsplash.com/photo-1550005809-91ad75fb315f?w=600", height: 320 },
-    { id: 8, src: "https://images.unsplash.com/photo-1537633552985-df8429e8048b?w=1200", height: 480 },
-    { id: 9, src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", height: 500 },
-    { id: 10, src: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D", height: 500 },
-    { id: 11, src: "/IMG20250815092059.jpg", height: 500 },
-    { id: 12, src: "/IMG20250928002212.jpg", height: 500 },
-    { id: 13, src: "/IMG20250815150258.jpg", height: 500 },
-    { id: 14, src: "/IMG20250214135630.jpg", height: 500 },
-    { id: 15, src: "/IMG20240104104957.jpg", height: 500 },
-    { id: 16, src: "/IMG20231218123200.jpg ", height: 500 },
-    { id: 17, src: "/MS_Musk_Elon_CloseUp.jpg ", height: 500 },
-    { id: 18, src: "/b34f22f0-3c7a-11f0-a0e7-01d93af84155.jpg ", height: 500 },
-]
-
-type FaceGroup = {
+interface FaceGroup {
     descriptors: Float32Array[]
     photoIds: number[]
 }
+
+type status = "pending" | "done" | "processing"
+interface Photos {
+    id: number
+    cloudinary_public_id: string
+    uploaded_at: string
+    room_id: number
+    cloudinary_url: string
+    filename: string
+    status: status
+    username: string
+}
+
+interface Groups {
+    cluster_id: number
+    urls: string[]
+}
+
+
+
 const RecentSouvenirs = () => {
     const [tab, setTab] = useState<'gallery' | 'upload'>('gallery')
+    const [photos, setPhotos] = useState<Photos[]>([])
     const [selected, setSelected] = useState<number | null>(null)
     const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
     const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
-    const [groups, setGroups] = useState<Map<number, FaceGroup>>(new Map())
+
+    const FetchPhotos = async () => {
+        const res = await axios.get("http://localhost:8000/image/room/2")
+
+        setPhotos(res.data)
+    }
+
+
+
+
+    const [groups, setGroups] = useState<Groups[] | []>([])
     const [selectedGroup, setSelectedGroup] = useState<number | null>(null)
     const [isIndexing, setIsIndexing] = useState(false)
+    const [loading, setLoading] = useState(false)
+
+    const FetchGroups = async () => {
+        const res = await axios.get("http://localhost:8000/image/room/2/groups")
+        console.log(res.data.clusters);
+
+        setGroups(res.data.clusters)
+    }
 
     const visiblePhotos = selectedGroup !== null
         ? photos.filter(photo =>
-            groups.get(selectedGroup)?.photoIds.includes(photo.id)
+            groups
+                .find(g => g.cluster_id === selectedGroup)
+                ?.urls.includes(photo.cloudinary_url)
         )
         : photos
 
@@ -59,40 +80,21 @@ const RecentSouvenirs = () => {
     const upload = useRef<HTMLInputElement>(null)
 
     const onSubmit = async () => {
+        setLoading(true)
         if (files.length === 0) return
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
-
+        formData.append("room_id", "2")
+        formData.append("username", "kachen")
         try {
-            const res = await axios.post("http://localhost:8000/detect", formData, {
-                headers: { "Content-Type": "multipart/form-data" },
-                timeout: 60000,
-                onUploadProgress: (e) => {
-                    const percent = Math.round((e.loaded * 100) / (e.total ?? 1))
-                    console.log(`${percent}%`) // เปลี่ยนเป็น setState ถ้าอยาก show progress bar
-                },
-            })
+            const res = await axios.post("http://localhost:8000/image/upload", formData)
 
-            // แปลง response → Map<number, FaceGroup>
-            const newGroups = new Map<number, FaceGroup>()
-            res.data.groups.forEach((group: any, index: number) => {
-                newGroups.set(index, {
-                    descriptors: [new Float32Array(group.descriptor_rep)],
-                    photoIds: group.photo_ids.map((filename: string) => {
-                        // map filename กลับเป็น photo.id
-                        const photo = photos.find(p => p.src.endsWith(filename) || p.src.includes(filename))
-                        return photo?.id ?? -1
-                    }).filter((id: number) => id !== -1),
-                })
-            })
-
-            setGroups(newGroups)
-            console.log(groups);
-            
+            setLoading(false)
             setFiles([])
-            preview.forEach(url => URL.revokeObjectURL(url))
             setPreview([])
-            setTab('gallery') // กลับไป gallery อัตโนมัติ (mobile)
+            FetchPhotos()
+            setTab("gallery")
+
         } catch (err) {
             console.error(err)
             alert('error')
@@ -110,7 +112,6 @@ const RecentSouvenirs = () => {
     }
 
 
-console.log(groups);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const input = e.target.files
@@ -157,6 +158,11 @@ console.log(groups);
     }, [])
 
 
+    useEffect(() => {
+        FetchPhotos()
+        FetchGroups()
+    }, [])
+
 
 
     return (
@@ -176,13 +182,13 @@ console.log(groups);
                     >
                         All
                     </button>
-                    {Array.from(groups.entries()).map(([gId, group]) => (
+                    {groups.map((group) => (
                         <button
-                            key={gId}
-                            onClick={() => setSelectedGroup(gId)}
-                            className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === gId ? 'bg-primary text-white' : ''}`}
+                            key={group.cluster_id}
+                            onClick={() => setSelectedGroup(group.cluster_id)}
+                            className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === group.cluster_id ? 'bg-primary text-white' : ''}`}
                         >
-                            Person {gId + 1} ({group.photoIds.length})
+                            Person {group.cluster_id + 1} ({group.urls.length})
                         </button>
                     ))}
                 </div>
@@ -190,7 +196,7 @@ console.log(groups);
                     <h1 className="text-h2 text-primary">Recent Souvenirs</h1>
                     <div className="space-x-4 flex  place-items-center">
                         <Badge className="rounded-sm" variant={'secondary'}>{photos.length} Photos</Badge>
-                        <Badge className="rounded-sm" variant={'secondary'}>8 Contributors</Badge>
+                        <Badge className="rounded-sm" variant={'secondary'}>{groups.length} Contributors</Badge>
                     </div>
                 </div>
 
@@ -199,10 +205,9 @@ console.log(groups);
                         <div key={photo.id} className="mb-3 break-inside-avoid">
                             <img
                                 onClick={() => setSelected(index)}
-                                src={photo.src}
+                                src={photo.cloudinary_url}
                                 alt=""
                                 className="w-full rounded-lg object-cover"
-                                style={{ height: photo.height }}
                             />
                         </div>
                     ))}
@@ -290,7 +295,7 @@ console.log(groups);
                             ))}
                         </div>
                         <div className="flex flex-col gap-2">
-                            <Button size={'lg'} className="rounded-full font-semibold" onClick={onSubmit}>UPLOAD ALL</Button>
+                            <Button size={'lg'} className="rounded-full font-semibold" onClick={onSubmit} disabled={loading}>UPLOAD ALL</Button>
                             <button
                                 className="text-xs font-semibold"
                                 onClick={() => {
@@ -361,7 +366,7 @@ console.log(groups);
                                     </div>
                                 ))}
                             </div>
-                            <Button size={'lg'} className="rounded-full font-semibold w-full">UPLOAD ALL</Button>
+                            <Button size={'lg'} className="rounded-full font-semibold w-full" >UPLOAD ALL</Button>
                             <button className="text-xs font-semibold w-full" onClick={() => {
                                 setFiles([])
                                 setTab('gallery')
@@ -373,11 +378,28 @@ console.log(groups);
                 </div>
             </div>
 
+            {/* show full screen */}
             {selected !== null && (
                 <div
-                    className="bg-black/90 z-50 fixed inset-0 flex items-center justify-center"
+                    className="bg-black/90 z-50 fixed   inset-0 flex items-center justify-center"
                     onClick={() => setSelected(null)}
                 >
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button className="absolute right-4 top-4 text-neutral-200" variant={'ghost'}>
+                                <EllipsisVertical />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            side="bottom"
+                            sideOffset={8}
+                        >
+                            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => console.log(`delete imaeg this ${selected}`)}>
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button
                         onClick={(e) => { e.stopPropagation(); prev() }}
                         variant={'outline'}
@@ -386,7 +408,7 @@ console.log(groups);
                         <ArrowLeft />
                     </Button>
                     <img
-                        src={visiblePhotos[selected].src}
+                        src={visiblePhotos[selected].cloudinary_url}
                         className="object-contain max-h-screen max-w-screen "
                         onClick={(e) => e.stopPropagation()}
 
