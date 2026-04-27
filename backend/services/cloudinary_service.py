@@ -39,3 +39,7 @@ async def upload_image(
 
     tasks = [upload_one(f) for f in files_bytes]
     return await asyncio.gather(*tasks)
+
+def delete_image(public_id:str):
+    result = cloudinary.uploader.destroy(public_id)
+    return result

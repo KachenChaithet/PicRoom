@@ -3,11 +3,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from schemas.image import ImageResponse
 from database import get_db
-from services.cloudinary_service import upload_image
+from services.cloudinary_service import upload_image,delete_image
 from models import Image, DetectedPerson
 from services.cluster_service import cluster_embeddings
 import asyncio
 from workers.face_work import process_faces
+
 
 router = APIRouter(prefix="/image", tags=["image"])
 
@@ -121,17 +122,19 @@ async def get_face(
     return images
 
 @router.delete("/{image_id}")
-async def delete_imaeg(
+async def delete_face(
     image_id:int,
     db:AsyncSession = Depends(get_db)
 ):
-    result = await db.excute(
+    result = await db.execute(
         select(Image).where(Image.id == image_id)
     )
-    image = result.scalars_one_or_one()
+    image = result.scalar_one_or_none()
     
     if not image:
         return {"message":"imaeg not found"}
+    
+    delete_image(image.cloudinary_public_id)
     
     await db.delete(image)
     await db.commit()

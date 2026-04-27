@@ -35,7 +35,7 @@ class Image(Base):
     room_id = Column(Integer, ForeignKey("rooms.id"), nullable=False)
     username = Column(String, nullable=False)
     room = relationship("Room", back_populates="images")
-    persons = relationship("DetectedPerson", back_populates="image")
+    persons = relationship("DetectedPerson", back_populates="image", cascade="all, delete-orphan")
 
 class DetectedPerson(Base):
     __tablename__ = "detected_persons"

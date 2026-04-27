@@ -8,11 +8,8 @@ import { Input } from "../ui/input"
 import * as faceapi from "face-api.js"
 import axios from "axios"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
+import { Spinner } from "../ui/spinner"
 
-interface FaceGroup {
-    descriptors: Float32Array[]
-    photoIds: number[]
-}
 
 type status = "pending" | "done" | "processing"
 interface Photos {
@@ -62,14 +59,13 @@ const RecentSouvenirs = () => {
         setGroups(res.data.clusters)
     }
 
-    const visiblePhotos = selectedGroup !== null
-        ? photos.filter(photo =>
-            groups
-                .find(g => g.cluster_id === selectedGroup)
-                ?.urls.includes(photo.cloudinary_url)
-        )
-        : photos
+    const selectedUrls = new Set(
+        groups.find(g => g.cluster_id === selectedGroup)?.urls || []
+    )
 
+    const visiblePhotos = selectedGroup !== null
+        ? photos.filter(photo => selectedUrls.has(photo.cloudinary_url))
+        : photos
 
 
     const [preview, setPreview] = useState<string[]>([])
@@ -80,8 +76,8 @@ const RecentSouvenirs = () => {
     const upload = useRef<HTMLInputElement>(null)
 
     const onSubmit = async () => {
-        setLoading(true)
         if (files.length === 0) return
+        setLoading(true)
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
         formData.append("room_id", "2")
@@ -89,19 +85,22 @@ const RecentSouvenirs = () => {
         try {
             const res = await axios.post("http://localhost:8000/image/upload", formData)
 
-            setLoading(false)
             setFiles([])
             setPreview([])
             FetchPhotos()
             setTab("gallery")
+            preview.forEach(url => URL.revokeObjectURL(url))
 
         } catch (err) {
             console.error(err)
             alert('error')
+        } finally {
+            setLoading(false)
+
         }
     }
 
-    const removeImage = (index: number) => {
+    const removeImagePreview = (index: number) => {
         setFiles(prev => prev.filter((_, i) => i !== index))
         setPreview(prev => {
             URL.revokeObjectURL(prev[index])
@@ -136,6 +135,24 @@ const RecentSouvenirs = () => {
         e.target.value = ""
     }
 
+    const handleDeleteImage = async (id: number) => {
+        setLoading(true)
+        try {
+            await axios.delete(`http://localhost:8000/image/${id}`)
+            setFiles([])
+            setPreview([])
+            FetchPhotos()
+            FetchGroups()
+            setSelected(null)
+        } catch (error) {
+            console.error(error)
+            alert('error')
+        } finally {
+            setLoading(false)
+
+        }
+    }
+
     // shorthand keyboard
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
@@ -147,7 +164,7 @@ const RecentSouvenirs = () => {
         }
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
-    }, [])
+    }, [visiblePhotos.length])
 
     // remove url revoke
     useEffect(() => {
@@ -167,6 +184,13 @@ const RecentSouvenirs = () => {
 
     return (
         <div className="grid md:grid-cols-3 gap-10">
+            {loading && (
+                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+                    <div className="text-neutral-200 px-6 py-4 rounded-xl shadow">
+                        <Spinner />
+                    </div>
+                </div>
+            )}
 
             {/* gallery */}
             <div className="col-span-2 order-2 md:order-1">
@@ -273,6 +297,7 @@ const RecentSouvenirs = () => {
                                 {files.length} memories selected for the gallery.
                             </p>
                         </div>
+
                         <div className="grid grid-cols-2 gap-4 w-full justify-items-center ">
                             {files.map((file, i) => (
                                 <div className="p-2 bg-primary/10 relative rounded-2xl" key={i}>
@@ -287,7 +312,7 @@ const RecentSouvenirs = () => {
                                     </span>
                                     <span
                                         className="absolute top-4 right-4 bg-primary text-white rounded-full p-2 "
-                                        onClick={() => removeImage(i)}
+                                        onClick={() => removeImagePreview(i)}
                                     >
                                         <X className="size-4" />
                                     </span>
@@ -295,7 +320,7 @@ const RecentSouvenirs = () => {
                             ))}
                         </div>
                         <div className="flex flex-col gap-2">
-                            <Button size={'lg'} className="rounded-full font-semibold" onClick={onSubmit} disabled={loading}>UPLOAD ALL</Button>
+                            <Button size={'lg'} className="rounded-full font-semibold" onClick={onSubmit} disabled={loading}> {loading ? "Uploading..." : "UPLOAD ALL"}</Button>
                             <button
                                 className="text-xs font-semibold"
                                 onClick={() => {
@@ -359,14 +384,14 @@ const RecentSouvenirs = () => {
                                         <img src={preview[i]} className="w-full h-24 object-cover rounded-xl" />
                                         <span
                                             className="absolute top-1 right-1 bg-primary text-white rounded-full p-1"
-                                            onClick={() => removeImage(i)}
+                                            onClick={() => removeImagePreview(i)}
                                         >
                                             <X className="size-3" />
                                         </span>
                                     </div>
                                 ))}
                             </div>
-                            <Button size={'lg'} className="rounded-full font-semibold w-full" >UPLOAD ALL</Button>
+                            <Button size={'lg'} className="rounded-full font-semibold w-full" onClick={onSubmit} disabled={loading} > {loading ? "Uploading..." : "UPLOAD ALL"}</Button>
                             <button className="text-xs font-semibold w-full" onClick={() => {
                                 setFiles([])
                                 setTab('gallery')
@@ -395,7 +420,7 @@ const RecentSouvenirs = () => {
                             side="bottom"
                             sideOffset={8}
                         >
-                            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => console.log(`delete imaeg this ${selected}`)}>
+                            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(visiblePhotos[selected].id)}>
                                 Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>
