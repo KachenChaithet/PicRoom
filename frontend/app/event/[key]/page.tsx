@@ -4,6 +4,8 @@ import { Card } from "@/components/ui/card"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import Loading from "./loading"
+import axios from "axios"
+import UsernameModal from "@/components/event/UsernameModal"
 
 type PageProps = {
     params: Promise<{ key: string }>
@@ -11,14 +13,22 @@ type PageProps = {
 
 const EventPage = async ({ params }: PageProps) => {
     const { key } = await params
-    if (key !== 'Hee') notFound()
+
+    let room
+    try {
+        const res = await axios.get(`http://localhost:8000/rooms/${key}`)
+        room = res.data
+    } catch (error) {
+        notFound()
+    }
     return (
         <div className="space-y-4">
+            <UsernameModal/>
             <EventHero
-                image="https://images.unsplash.com/photo-1653821355226-6def361cc7ab?q=80&w=1470&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-                date="June 14, 2024"
-                location="The Grand Conservatory, Florence"
-                name="The Wedding Gala"
+                image={room.background_image_url}
+                date={room.date}
+                location={room.location}
+                name={room.name}
                 isLive
 
             />
@@ -28,7 +38,7 @@ const EventPage = async ({ params }: PageProps) => {
 
             </div>
 
-        // </div>
+        </div>
     )
 }
 export default EventPage 

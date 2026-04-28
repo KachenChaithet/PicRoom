@@ -13,6 +13,7 @@ const eventSchema = z.object({
     }),
     eventName: z.string().min(1, "Event name is required"),
     eventLocation: z.string().min(1, "Location is required"),
+    backgroundImage: z.instanceof(File).optional(),
 })
 
 export type EventSchema = z.infer<typeof eventSchema>
@@ -22,7 +23,7 @@ interface CreateEventFormProps {
 }
 
 const CreateEventForm = ({ onSubmit }: CreateEventFormProps) => {
-    const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<EventSchema>({
+    const { register, handleSubmit, reset, formState: { errors, isSubmitting },setValue } = useForm<EventSchema>({
         resolver: zodResolver(eventSchema),
         defaultValues: {
             eventName: "",
@@ -95,6 +96,14 @@ const CreateEventForm = ({ onSubmit }: CreateEventFormProps) => {
                                 {errors.eventLocation.message}
                             </FieldDescription>
                         )}
+                    </Field>
+                    <Field>
+                        <FieldLabel>BACKGROUND IMAGE</FieldLabel>
+                        <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setValue('backgroundImage', e.target.files?.[0])}
+                        />
                     </Field>
                 </FieldGroup>
                 <div className="flex justify-between">

@@ -7,10 +7,12 @@ class RoomCreate(BaseModel):
     location:str
     
 class RoomResponse(BaseModel):
-    id:int
-    name:str
+    id: int
+    slug: str
+    name: str
     date:datetime
     location:str
-    created_at:datetime
+    background_image_url:str|None
+    background_image_public_id:str|None
     
     

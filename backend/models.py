@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Float, DateTime, Boo
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
+import uuid
 
 class User(Base):
     __tablename__ = "users"
@@ -17,12 +18,15 @@ class Room(Base):
     __tablename__ = "rooms"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    date = Column(DateTime, nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    slug = Column(String, unique=True, nullable=False, default=lambda: uuid.uuid4().hex[:8])
     owner = relationship("User", back_populates="rooms")
     images = relationship("Image", back_populates="room")
+    background_image_url = Column(String, nullable=True)
+    background_image_public_id = Column(String, nullable=True)
 
 class Image(Base):
     __tablename__ = "images"

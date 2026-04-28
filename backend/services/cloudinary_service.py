@@ -43,3 +43,16 @@ async def upload_image(
 def delete_image(public_id:str):
     result = cloudinary.uploader.destroy(public_id)
     return result
+
+async def upload_image_background(
+    file_bytes:bytes,
+    folder:str = "picroom/background"
+) -> dict:
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(
+        executor,lambda:cloudinary.uploader.upload(file_bytes,folder=folder)
+    )
+    return {
+        "url":result["secure_url"],
+        "public_id":result["public_id"]
+    }

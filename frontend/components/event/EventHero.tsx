@@ -9,6 +9,7 @@ type EventHeroProps = {
 }
 
 const EventHero = ({ date, image, location, name, isLive }: EventHeroProps) => {
+    
     return (
         <div className="relative w-full h-[40vh]">
             <Image src={image} alt={name} fill className="object-cover" />
