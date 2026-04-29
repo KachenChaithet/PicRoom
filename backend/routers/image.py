@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, File, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from schemas.image import ImageResponse
+from schemas.image import ImageResponse,UploadResponse
 from database import get_db
 from services.cloudinary_service import upload_image,delete_image
 from models import Image, DetectedPerson
@@ -12,7 +12,7 @@ from workers.face_work import process_faces
 
 router = APIRouter(prefix="/image", tags=["image"])
 
-@router.post("/upload", response_model=list[ImageResponse])
+@router.post("/upload", response_model=UploadResponse)
 async def create_image(
     files: list[UploadFile] = File(...),
     room_id: int = Form(...),
@@ -20,30 +20,47 @@ async def create_image(
     db: AsyncSession = Depends(get_db),
 ):
     files_bytes = [await f.read() for f in files]
-    upload_result = await upload_image(files_bytes)
 
-    image_records = []
-    for i, result in enumerate(upload_result):
-        image_data = Image(
-            filename=files[i].filename,
-            cloudinary_public_id=result["public_id"],
-            cloudinary_url=result["url"],
-            room_id=room_id,
-            username=username,
-            status="pending",
-        )
-        db.add(image_data)
-        image_records.append(image_data)
-
-    await db.commit()
-
-    for image in image_records:
-        await db.refresh(image)
-        asyncio.create_task(
-            process_faces(image.id, image.cloudinary_url, room_id)
-        )
-
-    return image_records
+    uploaded_public_ids = []
+    
+    try:
+        upload_result = await upload_image(files_bytes)
+        
+        failed = [r for r in upload_result if not r["success"]]
+        success = [r for r in upload_result if r["success"]]
+        uploaded_public_ids = [r["public_id"] for r in upload_result if r["success"]]
+        
+        image_recodes = []
+        for i,result in enumerate(upload_result):
+            if not result["success"]:
+                continue
+            image_data = Image(
+                filename=files[i].filename,
+                cloudinary_public_id=result["public_id"],
+                cloudinary_url=result["url"],
+                room_id=room_id,
+                username=username,
+                status="pending",
+            )
+            db.add(image_data)
+            image_recodes.append(image_data)
+        await db.commit()
+        
+        for image in image_recodes:
+            await db.refresh(image)
+            asyncio.create_task(
+                process_faces(image.id,image.cloudinary_url,room_id)
+            )
+        
+        return {
+            "uploaded":image_recodes,
+            "failed":[r["error"] for r in failed]
+        }
+    except Exception as e:
+        for public_id in uploaded_public_ids:
+            delete_image(public_id)
+        raise e
+        
 
 @router.post("/room/{room_id}/cluster")
 async def cluster_room_faces(

@@ -14,3 +14,7 @@ class ImageCreate(BaseModel):
 class ImageResponse(ImageCreate):
     id: int
     uploaded_at: datetime
+
+class UploadResponse(BaseModel):
+    uploaded:list[ImageResponse]
+    failed:list[str]

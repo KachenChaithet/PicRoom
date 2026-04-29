@@ -34,12 +34,13 @@ const RecentSouvenirs = () => {
     const [tab, setTab] = useState<'gallery' | 'upload'>('gallery')
     const [photos, setPhotos] = useState<Photos[]>([])
     const [selected, setSelected] = useState<number | null>(null)
+    const [username, setUsername] = useState("guest")
     const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
     const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
 
     const FetchPhotos = async () => {
-        const res = await axios.get("http://localhost:8000/image/room/2")
+        const res = await axios.get("http://localhost:8000/image/room/5")
 
         setPhotos(res.data)
     }
@@ -53,7 +54,7 @@ const RecentSouvenirs = () => {
     const [loading, setLoading] = useState(false)
 
     const FetchGroups = async () => {
-        const res = await axios.get("http://localhost:8000/image/room/2/groups")
+        const res = await axios.get("http://localhost:8000/image/room/5/groups")
         console.log(res.data.clusters);
 
         setGroups(res.data.clusters)
@@ -81,7 +82,7 @@ const RecentSouvenirs = () => {
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
         formData.append("room_id", "2")
-        formData.append("username", "kachen")
+        formData.append("username", username)
         try {
             const res = await axios.post("http://localhost:8000/image/upload", formData)
 
@@ -176,6 +177,7 @@ const RecentSouvenirs = () => {
 
 
     useEffect(() => {
+        setUsername(localStorage.getItem("username") ?? "guest")
         FetchPhotos()
         FetchGroups()
     }, [])
