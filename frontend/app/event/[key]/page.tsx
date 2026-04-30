@@ -22,7 +22,7 @@ const EventPage = async ({ params }: PageProps) => {
         notFound()
     }
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 ">
             <UsernameModal/>
             <EventHero
                 image={room.background_image_url}

@@ -8,6 +8,11 @@ from models import Image, DetectedPerson
 from services.cluster_service import cluster_embeddings
 import asyncio
 from workers.face_work import process_faces
+import requests
+import cloudinary.uploader
+from PIL import Image as PILImage
+from io import BytesIO
+from sqlalchemy.orm import selectinload
 
 
 router = APIRouter(prefix="/image", tags=["image"])
@@ -61,27 +66,50 @@ async def create_image(
             delete_image(public_id)
         raise e
         
-
 @router.post("/room/{room_id}/cluster")
 async def cluster_room_faces(
     room_id: int,
     db: AsyncSession = Depends(get_db),
 ):
+    # 1. query พร้อม selectinload
     result = await db.execute(
-        select(DetectedPerson).where(DetectedPerson.room_id == room_id)
+        select(DetectedPerson)
+        .where(DetectedPerson.room_id == room_id)
+        .options(selectinload(DetectedPerson.image))
     )
     persons = result.scalars().all()
-
     if not persons:
         return {"message": "no faces found"}
 
+    # 2. cluster
     faces = [{"embedding": p.embedding} for p in persons]
     labels = cluster_embeddings(faces)
-
     for i, person in enumerate(persons):
         person.cluster_id = int(labels[i])
 
-    # update status ใน images ทั้งหมดของ room นี้
+    # 3. loop cluster → crop → upload
+    unique_clusters = set(l for l in labels if l != -1)
+    for cluster_id in unique_clusters:
+        cluster_persons = [p for p, label in zip(persons, labels) if label == cluster_id]
+        best = max(cluster_persons, key=lambda p: p.confidence)
+
+        # ดึงรูปจาก Cloudinary
+        img_url = best.image.cloudinary_url
+        response = requests.get(img_url)
+        img = PILImage.open(BytesIO(response.content))
+
+        # crop ด้วย bbox
+        x, y, w, h = best.bbox_x, best.bbox_y, best.bbox_w, best.bbox_h
+        cropped = img.crop((x, y, x + w, y + h))
+
+        # upload crop ไป Cloudinary
+        buffer = BytesIO()
+        cropped.save(buffer, format="JPEG")
+        buffer.seek(0)
+        upload_result = cloudinary.uploader.upload(buffer, folder="picroom/face_crops")
+        best.face_crop_url = upload_result["secure_url"]
+
+    # 4. update image status
     images_result = await db.execute(
         select(Image).where(Image.room_id == room_id)
     )
@@ -89,9 +117,9 @@ async def cluster_room_faces(
     for image in images:
         image.status = "done"
 
+    # 5. commit ครั้งเดียว
     await db.commit()
 
-    unique_clusters = set(l for l in labels if l != -1)
     return {
         "total_faces": len(persons),
         "total_clusters": len(unique_clusters),
@@ -116,14 +144,26 @@ async def get_face_groups(
     for person, image in rows:
         cid = person.cluster_id
         if cid not in groups:
-            groups[cid] = []
-        if image.cloudinary_url not in groups[cid]:
-            groups[cid].append(image.cloudinary_url)
+            groups[cid] = {
+                "face_crop_url": None,
+                "image_urls": []
+            }  
+       # เอา face_crop_url จาก best person (ที่มี face_crop_url)
+        if person.face_crop_url and not groups[cid]["face_crop_url"]:
+            groups[cid]["face_crop_url"] = person.face_crop_url
+
+        # รูปเต็ม — ไม่ซ้ำ
+        if image.cloudinary_url not in groups[cid]["image_urls"]:
+            groups[cid]["image_urls"].append(image.cloudinary_url)
 
     return {
         "clusters": [
-            {"cluster_id": cid, "urls": urls}
-            for cid, urls in groups.items()
+            {
+                "cluster_id": cid,
+                "face_crop_url": data["face_crop_url"],
+                "image_urls": data["image_urls"]
+            }
+            for cid, data in groups.items()
         ]
     }
 

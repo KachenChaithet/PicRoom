@@ -14,6 +14,8 @@ async def process_faces(image_id: int, image_url: str, room_id: int):
             return
 
         for face in faces:
+            
+            
             bbox = face["bbox"]
             db_face = DetectedPerson(
                 image_id=image_id,

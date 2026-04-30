@@ -2,9 +2,8 @@ import insightface
 import cv2
 import numpy as np
 
-# โหลด model ครั้งเดียวตอน startup
 app = insightface.app.FaceAnalysis(name="buffalo_l")
-app.prepare(ctx_id=-1)  # -1 = CPU
+app.prepare(ctx_id=-1)
 
 def extract_faces(image_bytes: bytes) -> list[dict]:
     nparr = np.frombuffer(image_bytes, np.uint8)
@@ -22,5 +21,5 @@ def extract_faces(image_bytes: bytes) -> list[dict]:
             "det_score": float(face.det_score),
         }
         for face in faces
-        if face.det_score > 0.5  # กรอง false positive
+        if face.det_score > 0.5
     ]

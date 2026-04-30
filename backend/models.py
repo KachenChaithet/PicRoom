@@ -23,10 +23,10 @@ class Room(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     slug = Column(String, unique=True, nullable=False, default=lambda: uuid.uuid4().hex[:8])
-    owner = relationship("User", back_populates="rooms")
-    images = relationship("Image", back_populates="room")
     background_image_url = Column(String, nullable=True)
     background_image_public_id = Column(String, nullable=True)
+    owner = relationship("User", back_populates="rooms")
+    images = relationship("Image", back_populates="room")
 
 class Image(Base):
     __tablename__ = "images"

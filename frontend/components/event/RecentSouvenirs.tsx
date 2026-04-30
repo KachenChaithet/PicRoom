@@ -9,6 +9,8 @@ import * as faceapi from "face-api.js"
 import axios from "axios"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import { Spinner } from "../ui/spinner"
+import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 
 
 type status = "pending" | "done" | "processing"
@@ -25,7 +27,8 @@ interface Photos {
 
 interface Groups {
     cluster_id: number
-    urls: string[]
+    face_crop_url: string
+    image_urls: string[]
 }
 
 
@@ -61,7 +64,7 @@ const RecentSouvenirs = () => {
     }
 
     const selectedUrls = new Set(
-        groups.find(g => g.cluster_id === selectedGroup)?.urls || []
+        groups.find(g => g.cluster_id === selectedGroup)?.image_urls || []
     )
 
     const visiblePhotos = selectedGroup !== null
@@ -81,7 +84,7 @@ const RecentSouvenirs = () => {
         setLoading(true)
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
-        formData.append("room_id", "2")
+        formData.append("room_id", "5")
         formData.append("username", username)
         try {
             const res = await axios.post("http://localhost:8000/image/upload", formData)
@@ -201,22 +204,58 @@ const RecentSouvenirs = () => {
                         กำลังจำแนกใบหน้า...
                     </span>
                 )}
-                <div className="flex gap-2 flex-wrap my-2">
-                    <button
-                        onClick={() => setSelectedGroup(null)}
-                        className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === null ? 'bg-primary text-white' : ''}`}
-                    >
-                        All
-                    </button>
-                    {groups.map((group) => (
-                        <button
-                            key={group.cluster_id}
-                            onClick={() => setSelectedGroup(group.cluster_id)}
-                            className={`px-3 py-1 rounded-full text-sm border ${selectedGroup === group.cluster_id ? 'bg-primary text-white' : ''}`}
-                        >
-                            Person {group.cluster_id + 1} ({group.urls.length})
-                        </button>
-                    ))}
+                <div className="">
+                    <h1 className="font-semibold text-muted-foreground">People in this event</h1>
+                    <div className="flex gap-4 flex-wrap my-2">
+
+                        {groups.map((group) => (
+                            <>
+                                <div className="flex flex-col items-center gap-2">
+
+                                    <Button className="w-20 h-20 rounded-full overflow-hidden p-0">
+                                        <img
+                                            alt="user"
+                                            src={group.face_crop_url}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </Button>
+                                    <div className="flex flex-col items-center ">
+                                        <span className="font-semibold text-primary">Person {group.cluster_id + 1}</span>
+                                        <span className="text-body-sm">{group.image_urls.length} memories</span>
+                                    </div>
+                                </div>
+                            </>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="flex justify-between items-center">
+                    <Tabs defaultValue="all" className="  ">
+                        <TabsList className="w-60  rounded-full bg-primary/10 ">
+                            <TabsTrigger value="all" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">All</TabsTrigger>
+                            <TabsTrigger value="photos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Photos</TabsTrigger>
+                            <TabsTrigger value="videos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Videos</TabsTrigger>
+
+                        </TabsList>
+                    </Tabs>
+
+                    <div className="flex gap-2 items-center text-body-sm">
+                        Sort By:
+                        <Select defaultValue="newest"  >
+                            <SelectTrigger className=" rounded-full bg-primary/10 font-semibold text-primary">
+                                <SelectValue placeholder="Theme" />
+                            </SelectTrigger>
+                            <SelectContent side="left">
+                                <SelectGroup>
+                                    <SelectItem value="recent">Recent</SelectItem>
+                                    <SelectItem value="oldest">Oldest</SelectItem>
+                                    <SelectItem value="newest">Newest</SelectItem>
+                                </SelectGroup>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+
                 </div>
                 <div className="flex justify-between">
                     <h1 className="text-h2 text-primary">Recent Souvenirs</h1>
