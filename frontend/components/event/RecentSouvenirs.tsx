@@ -9,8 +9,9 @@ import * as faceapi from "face-api.js"
 import axios from "axios"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import { Spinner } from "../ui/spinner"
-import { Tabs, TabsList, TabsTrigger } from "../ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import PhotoGrid from "./PhotoGrid"
 
 
 type status = "pending" | "done" | "processing"
@@ -38,9 +39,10 @@ const RecentSouvenirs = () => {
     const [photos, setPhotos] = useState<Photos[]>([])
     const [selected, setSelected] = useState<number | null>(null)
     const [username, setUsername] = useState("guest")
+    const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'newest'>('newest')
+
     const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
     const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
-
 
     const FetchPhotos = async () => {
         const res = await axios.get("http://localhost:8000/image/room/5")
@@ -58,7 +60,6 @@ const RecentSouvenirs = () => {
 
     const FetchGroups = async () => {
         const res = await axios.get("http://localhost:8000/image/room/5/groups")
-        console.log(res.data.clusters);
 
         setGroups(res.data.clusters)
     }
@@ -71,6 +72,13 @@ const RecentSouvenirs = () => {
         ? photos.filter(photo => selectedUrls.has(photo.cloudinary_url))
         : photos
 
+    const sortecdPhotos = [...visiblePhotos].sort((a, b) => {
+        if (sortBy === "newest") return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+        if (sortBy === "oldest") return new Date(a.uploaded_at).getTime() - new Date(b.uploaded_at).getTime()
+        if (sortBy === "recent") return new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime()
+
+        return 0
+    })
 
     const [preview, setPreview] = useState<string[]>([])
     const [files, setFiles] = useState<File[]>([])
@@ -173,10 +181,10 @@ const RecentSouvenirs = () => {
     // remove url revoke
     useEffect(() => {
         return () => {
-            console.log("unmount cleanup, revoking:", previewRef.current)
             previewRef.current.forEach(url => URL.revokeObjectURL(url))
         }
     }, [])
+
 
 
     useEffect(() => {
@@ -207,12 +215,24 @@ const RecentSouvenirs = () => {
                 <div className="">
                     <h1 className="font-semibold text-muted-foreground">People in this event</h1>
                     <div className="flex gap-4 flex-wrap my-2">
+                        <div className="flex flex-col items-center gap-2">
+                            <Button
+                                className={`w-20 h-20 rounded-full ${selectedGroup === null ? 'ring-2 ring-primary' : ''}`}
+                                variant="outline"
+                                onClick={() => setSelectedGroup(null)}
+                            >
+                                All
+                            </Button>
+                            <span className="text-body-sm">{photos.length} photos</span>
+                        </div>
 
                         {groups.map((group) => (
                             <>
                                 <div className="flex flex-col items-center gap-2">
 
-                                    <Button className="w-20 h-20 rounded-full overflow-hidden p-0">
+                                    <Button className="w-20 h-20 rounded-full overflow-hidden p-0" onClick={() => setSelectedGroup(
+                                        selectedGroup === group.cluster_id ? null : group.cluster_id
+                                    )}>
                                         <img
                                             alt="user"
                                             src={group.face_crop_url}
@@ -229,54 +249,48 @@ const RecentSouvenirs = () => {
                     </div>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="">
                     <Tabs defaultValue="all" className="  ">
-                        <TabsList className="w-60  rounded-full bg-primary/10 ">
-                            <TabsTrigger value="all" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">All</TabsTrigger>
-                            <TabsTrigger value="photos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Photos</TabsTrigger>
-                            <TabsTrigger value="videos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Videos</TabsTrigger>
+                        <div className="flex justify-between items-center">
 
-                        </TabsList>
+                            <TabsList className="w-60  rounded-full bg-primary/10 ">
+                                <TabsTrigger value="all" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">All</TabsTrigger>
+                                <TabsTrigger value="photos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Photos</TabsTrigger>
+                                <TabsTrigger value="videos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Videos</TabsTrigger>
+
+                            </TabsList>
+                            <div className="flex gap-2 items-center text-body-sm">
+                                Sort By:
+                                <Select defaultValue="newest" onValueChange={(v) => setSortBy(v as 'recent' | 'oldest' | 'newest')}>
+                                    <SelectTrigger className=" rounded-full bg-primary/10 font-semibold text-primary">
+                                        <SelectValue placeholder="Theme" />
+                                    </SelectTrigger>
+                                    <SelectContent side="left">
+                                        <SelectGroup>
+                                            <SelectItem value="recent">Recent</SelectItem>
+                                            <SelectItem value="oldest">Oldest</SelectItem>
+                                            <SelectItem value="newest">Newest</SelectItem>
+                                        </SelectGroup>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                        </div>
+                        <TabsContent value="all">
+                            <PhotoGrid onSelect={setSelected} photos={sortecdPhotos} />
+                        </TabsContent>
+                        <TabsContent value="photos">
+                            <PhotoGrid onSelect={setSelected} photos={sortecdPhotos} />
+                        </TabsContent>
+                        <TabsContent value="videos">
+                            <PhotoGrid onSelect={setSelected} photos={sortecdPhotos} />
+                        </TabsContent>
                     </Tabs>
 
-                    <div className="flex gap-2 items-center text-body-sm">
-                        Sort By:
-                        <Select defaultValue="newest"  >
-                            <SelectTrigger className=" rounded-full bg-primary/10 font-semibold text-primary">
-                                <SelectValue placeholder="Theme" />
-                            </SelectTrigger>
-                            <SelectContent side="left">
-                                <SelectGroup>
-                                    <SelectItem value="recent">Recent</SelectItem>
-                                    <SelectItem value="oldest">Oldest</SelectItem>
-                                    <SelectItem value="newest">Newest</SelectItem>
-                                </SelectGroup>
-                            </SelectContent>
-                        </Select>
-                    </div>
 
 
                 </div>
-                <div className="flex justify-between">
-                    <h1 className="text-h2 text-primary">Recent Souvenirs</h1>
-                    <div className="space-x-4 flex  place-items-center">
-                        <Badge className="rounded-sm" variant={'secondary'}>{photos.length} Photos</Badge>
-                        <Badge className="rounded-sm" variant={'secondary'}>{groups.length} Contributors</Badge>
-                    </div>
-                </div>
 
-                <div className=" columns-2 gap-4">
-                    {visiblePhotos.map((photo, index) => (
-                        <div key={photo.id} className="mb-3 break-inside-avoid">
-                            <img
-                                onClick={() => setSelected(index)}
-                                src={photo.cloudinary_url}
-                                alt=""
-                                className="w-full rounded-lg object-cover"
-                            />
-                        </div>
-                    ))}
-                </div>
             </div>
 
             {/* upload dasktop*/}
@@ -292,6 +306,25 @@ const RecentSouvenirs = () => {
                         <div
                             className="border-dashed max-w-100 h-48 border-2 rounded-2xl flex items-center justify-center flex-col gap-2 cursor-pointer"
                             onClick={() => upload.current?.click()}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                                e.preventDefault()
+                                const droppredFiles = Array.from(e.dataTransfer.files)
+
+                                console.log(e.dataTransfer.files);
+                                
+                                const filtered = droppredFiles.filter(file =>
+                                    !files.some(f => f.name === file.name && f.size === file.size)
+                                )
+                                const urls = filtered.map(file => URL.createObjectURL(file))
+                                setFiles(prev => [...prev, ...filtered])
+                                setPreview(prev => {
+                                    const next = [...prev, ...urls]
+                                    previewRef.current = next
+                                    return next
+                                })
+
+                            }}
                         >
                             <span className="p-4 bg-primary text-white rounded-full">
                                 <Camera />
@@ -445,52 +478,54 @@ const RecentSouvenirs = () => {
             </div>
 
             {/* show full screen */}
-            {selected !== null && (
-                <div
-                    className="bg-black/90 z-50 fixed   inset-0 flex items-center justify-center"
-                    onClick={() => setSelected(null)}
-                >
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button className="absolute right-4 top-4 text-neutral-200" variant={'ghost'}>
-                                <EllipsisVertical />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="end"
-                            side="bottom"
-                            sideOffset={8}
+            {
+                selected !== null && (
+                    <div
+                        className="bg-black/90 z-50 fixed   inset-0 flex items-center justify-center"
+                        onClick={() => setSelected(null)}
+                    >
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button className="absolute right-4 top-4 text-neutral-200" variant={'ghost'}>
+                                    <EllipsisVertical />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent
+                                align="end"
+                                side="bottom"
+                                sideOffset={8}
+                            >
+                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(visiblePhotos[selected].id)}>
+                                    Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        <Button
+                            onClick={(e) => { e.stopPropagation(); prev() }}
+                            variant={'outline'}
+                            className="absolute left-4 "
                         >
-                            <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(visiblePhotos[selected].id)}>
-                                Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                    <Button
-                        onClick={(e) => { e.stopPropagation(); prev() }}
-                        variant={'outline'}
-                        className="absolute left-4 "
-                    >
-                        <ArrowLeft />
-                    </Button>
-                    <img
-                        src={visiblePhotos[selected].cloudinary_url}
-                        className="object-contain max-h-screen max-w-screen "
-                        onClick={(e) => e.stopPropagation()}
+                            <ArrowLeft />
+                        </Button>
+                        <img
+                            src={sortecdPhotos[selected].cloudinary_url}
+                            className="object-contain max-h-screen max-w-screen "
+                            onClick={(e) => e.stopPropagation()}
 
-                    />
-                    <Button
-                        onClick={(e) => { e.stopPropagation(); next() }}
-                        variant={'outline'}
-                        className="absolute right-4"
-                    >
-                        <ArrowRight />
-                    </Button>
+                        />
+                        <Button
+                            onClick={(e) => { e.stopPropagation(); next() }}
+                            variant={'outline'}
+                            className="absolute right-4"
+                        >
+                            <ArrowRight />
+                        </Button>
 
 
-                </div>
-            )}
-        </div>
+                    </div>
+                )
+            }
+        </div >
 
     )
 }
