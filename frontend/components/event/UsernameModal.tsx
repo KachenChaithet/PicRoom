@@ -4,22 +4,30 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 
-const UsernameModal = () => {
+const UsernameModal = ({ open, onOpenChange }: { open?: boolean, onOpenChange?: (open: boolean) => void }) => {
     const [username, setUsername] = useState("")
     const [show, setShow] = useState(false)
+    console.log(open);
+
 
     useEffect(() => {
         const stored = localStorage.getItem("username")
+
         if (!stored) {
             setShow(true)
+
         }
     }, [])
     const handleSubmit = () => {
         localStorage.setItem("username", username)
         setShow(false)
+        onOpenChange?.(false)
     }
     return (
-        <Dialog open={show} onOpenChange={setShow}>
+        <Dialog open={open === true || show} onOpenChange={(val) => {
+            setShow(val)
+            onOpenChange?.(val)
+        }}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Input your name</DialogTitle>

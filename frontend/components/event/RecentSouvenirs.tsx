@@ -3,7 +3,7 @@ import Image from "next/image"
 import { Badge } from "../ui/badge"
 import React, { useEffect, useRef, useState } from "react"
 import { Button } from "../ui/button"
-import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, EllipsisVertical, Plus, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, Ellipsis, EllipsisVertical, FolderPen, ListFilter, Plus, User, X } from "lucide-react"
 import { Input } from "../ui/input"
 import * as faceapi from "face-api.js"
 import axios from "axios"
@@ -12,6 +12,7 @@ import { Spinner } from "../ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import PhotoGrid from "./PhotoGrid"
+import UsernameModal from "./UsernameModal"
 
 
 type status = "pending" | "done" | "processing"
@@ -34,8 +35,8 @@ interface Groups {
 
 
 
-const RecentSouvenirs = () => {
-    const [tab, setTab] = useState<'gallery' | 'upload'>('gallery')
+const RecentSouvenirs = ({ id }: { id: string }) => {
+    const [tab, setTab] = useState<'gallery' | 'upload' | 'more'>('gallery')
     const [photos, setPhotos] = useState<Photos[]>([])
     const [selected, setSelected] = useState<number | null>(null)
     const [username, setUsername] = useState("guest")
@@ -45,7 +46,7 @@ const RecentSouvenirs = () => {
     const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
 
     const FetchPhotos = async () => {
-        const res = await axios.get("http://localhost:8000/image/room/5")
+        const res = await axios.get(`http://localhost:8000/image/room/${id}`)
 
         setPhotos(res.data)
     }
@@ -59,7 +60,7 @@ const RecentSouvenirs = () => {
     const [loading, setLoading] = useState(false)
 
     const FetchGroups = async () => {
-        const res = await axios.get("http://localhost:8000/image/room/5/groups")
+        const res = await axios.get(`http://localhost:8000/image/room/${id}/groups`)
 
         setGroups(res.data.clusters)
     }
@@ -83,7 +84,7 @@ const RecentSouvenirs = () => {
     const [preview, setPreview] = useState<string[]>([])
     const [files, setFiles] = useState<File[]>([])
     const previewRef = useRef<string[]>([]) // กัน preview get ค่า mount จาก render 1 
-
+    const [showModal, setShowModal] = useState(false)
 
     const upload = useRef<HTMLInputElement>(null)
 
@@ -92,7 +93,7 @@ const RecentSouvenirs = () => {
         setLoading(true)
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
-        formData.append("room_id", "5")
+        formData.append("room_id", id)
         formData.append("username", username)
         try {
             const res = await axios.post("http://localhost:8000/image/upload", formData)
@@ -168,15 +169,15 @@ const RecentSouvenirs = () => {
     // shorthand keyboard
     useEffect(() => {
         const handleKey = (e: KeyboardEvent) => {
-            if (e.key === "ArrowLeft") setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
-            if (e.key === "ArrowRight") setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
+            if (e.key === "ArrowLeft") setSelected(i => i !== null ? (i - 1 + sortecdPhotos.length) % sortecdPhotos.length : null)
+            if (e.key === "ArrowRight") setSelected(i => i !== null ? (i + 1) % sortecdPhotos.length : null)
 
             if (e.key === "Escape") setSelected(null)
 
         }
         window.addEventListener("keydown", handleKey)
         return () => window.removeEventListener("keydown", handleKey)
-    }, [visiblePhotos.length])
+    }, [sortecdPhotos.length])
 
     // remove url revoke
     useEffect(() => {
@@ -196,7 +197,8 @@ const RecentSouvenirs = () => {
 
 
     return (
-        <div className="grid md:grid-cols-3 gap-10">
+        <div className="grid md:grid-cols-3 gap-10 ">
+            <UsernameModal open={showModal} onOpenChange={setShowModal} />
             {loading && (
                 <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
                     <div className="text-neutral-200 px-6 py-4 rounded-xl shadow">
@@ -206,31 +208,31 @@ const RecentSouvenirs = () => {
             )}
 
             {/* gallery */}
-            <div className="col-span-2 order-2 md:order-1">
+            <div className="col-span-2 order-2 md:order-1 space-y-4">
                 {isIndexing && (
                     <span className="text-xs text-muted-foreground animate-pulse">
                         กำลังจำแนกใบหน้า...
                     </span>
                 )}
-                <div className="">
-                    <h1 className="font-semibold text-muted-foreground">People in this event</h1>
-                    <div className="flex gap-4 flex-wrap my-2">
-                        <div className="flex flex-col items-center gap-2">
-                            <Button
-                                className={`w-20 h-20 rounded-full ${selectedGroup === null ? 'ring-2 ring-primary' : ''}`}
-                                variant="outline"
-                                onClick={() => setSelectedGroup(null)}
-                            >
-                                All
+                <div className="space-y-2 ">
+                    <div className="flex justify-between items-center">
+                        <h1 className="font-semibold text-h2 text-primary">People in this event</h1>
+                        <Button variant={'ghost'} className="font-semibold text-primary">View All</Button>
+                    </div>
+                    <div className="flex gap-4 flex-wrap justify-around md:justify-start my-2">
+
+                        <div className="flex flex-col items-center  gap-2">
+
+                            <Button className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden p-0 border-4 border-neutral-300" onClick={() => setSelectedGroup(null)}>
+                                <User />
                             </Button>
-                            <span className="text-body-sm">{photos.length} photos</span>
+                            <span className="font-semibold text-muted-foreground text-body-base">All</span>
                         </div>
-
-                        {groups.map((group) => (
+                        {groups.slice(0, 3).map((group) => (
                             <>
-                                <div className="flex flex-col items-center gap-2">
+                                <div className="flex flex-col items-center  gap-2">
 
-                                    <Button className="w-20 h-20 rounded-full overflow-hidden p-0" onClick={() => setSelectedGroup(
+                                    <Button className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden p-0 border-4 border-neutral-300" onClick={() => setSelectedGroup(
                                         selectedGroup === group.cluster_id ? null : group.cluster_id
                                     )}>
                                         <img
@@ -239,10 +241,7 @@ const RecentSouvenirs = () => {
                                             className="w-full h-full object-cover"
                                         />
                                     </Button>
-                                    <div className="flex flex-col items-center ">
-                                        <span className="font-semibold text-primary">Person {group.cluster_id + 1}</span>
-                                        <span className="text-body-sm">{group.image_urls.length} memories</span>
-                                    </div>
+                                    <span className="font-semibold text-muted-foreground text-body-base">Person {group.cluster_id + 1}</span>
                                 </div>
                             </>
                         ))}
@@ -250,29 +249,29 @@ const RecentSouvenirs = () => {
                 </div>
 
                 <div className="">
-                    <Tabs defaultValue="all" className="  ">
+                    <Tabs defaultValue="all" className="space-y-2">
                         <div className="flex justify-between items-center">
 
-                            <TabsList className="w-60  rounded-full bg-primary/10 ">
-                                <TabsTrigger value="all" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">All</TabsTrigger>
-                                <TabsTrigger value="photos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Photos</TabsTrigger>
-                                <TabsTrigger value="videos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold data-[state=active]:text-white">Videos</TabsTrigger>
+                            <TabsList className="w-60   rounded-full bg-primary/10 ">
+                                <TabsTrigger value="all" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold  data-[state=active]:text-white">All</TabsTrigger>
+                                <TabsTrigger value="photos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold  data-[state=active]:text-white">Photos</TabsTrigger>
+                                <TabsTrigger value="videos" className="h-8 rounded-full data-[state=active]:bg-primary font-semibold  data-[state=active]:text-white">Videos</TabsTrigger>
 
                             </TabsList>
-                            <div className="flex gap-2 items-center text-body-sm">
-                                Sort By:
-                                <Select defaultValue="newest" onValueChange={(v) => setSortBy(v as 'recent' | 'oldest' | 'newest')}>
-                                    <SelectTrigger className=" rounded-full bg-primary/10 font-semibold text-primary">
-                                        <SelectValue placeholder="Theme" />
-                                    </SelectTrigger>
-                                    <SelectContent side="left">
-                                        <SelectGroup>
-                                            <SelectItem value="recent">Recent</SelectItem>
-                                            <SelectItem value="oldest">Oldest</SelectItem>
-                                            <SelectItem value="newest">Newest</SelectItem>
-                                        </SelectGroup>
-                                    </SelectContent>
-                                </Select>
+                            <div className="flex gap-2 items-center ">
+                                <span className="text-body-sm text-muted-foreground font-semibold">{sortecdPhotos.length} Photos</span>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant={'ghost'} size={'icon'}>
+                                            <ListFilter className="size-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                        <DropdownMenuItem onClick={() => setSortBy("recent")}>Recent</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setSortBy("oldest")}>Oldest</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => setSortBy("newest")}>Newest</DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
 
                         </div>
@@ -312,7 +311,7 @@ const RecentSouvenirs = () => {
                                 const droppredFiles = Array.from(e.dataTransfer.files)
 
                                 console.log(e.dataTransfer.files);
-                                
+
                                 const filtered = droppredFiles.filter(file =>
                                     !files.some(f => f.name === file.name && f.size === file.size)
                                 )
@@ -417,27 +416,58 @@ const RecentSouvenirs = () => {
 
             {/* tab mobile */}
             <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t flex md:hidden">
-                <button
-                    onClick={() => setTab('gallery')}
-                    className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                {tab === 'more' ? (
+                    <>
+                        <button
+                            onClick={() => setTab('gallery')}
+                            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                            ${tab === 'more' ? 'text-primary' : 'text-muted-foreground'}`}
+                        >
+                            <ArrowLeft className="size-4" />
+                            Go back
+                        </button>
+                        <button
+                            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                            ${tab === 'more' ? 'text-primary' : 'text-muted-foreground'}`}
+                            onClick={() => setShowModal(true)}
+                        >
+                            <FolderPen className="size-4" />
+                            Rename
+                        </button>
+                    </>
+                ) : (
+                    <>
+                        <button
+                            onClick={() => setTab('gallery')}
+                            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
                         ${tab === 'gallery' ? 'text-primary' : 'text-muted-foreground'}`}
-                >
-                    <Camera className="size-5" />
-                    Gallery
-                </button>
-                <button
-                    onClick={() => setTab('upload')}
-                    className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
+                        >
+                            <Camera className="size-4" />
+                            Gallery
+                        </button>
+                        <button
+                            onClick={() => setTab('upload')}
+                            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
                         ${tab === 'upload' ? 'text-primary' : 'text-muted-foreground'}`}
-                >
-                    <Plus className="size-5" />
-                    Upload
-                </button>
+                        >
+                            <Plus className="size-4" />
+                            Upload
+                        </button>
+                        <button
+                            onClick={() => setTab('more')}
+                            className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors`}
+                        >
+                            <Ellipsis className="size-4" />
+                            More
+                        </button>
+                    </>
+                )}
+
             </div>
 
             {/* upload mobile  */}
             <div className={`fixed inset-x-0 bottom-16 z-30 bg-background rounded-t-3xl border-t shadow-xl transition-transform duration-300 md:hidden
-                 ${tab === 'upload' ? 'translate-y-0' : 'translate-y-full'}`}
+                 ${tab === 'upload' ? 'translate-y-1' : 'translate-y-full'}`}
             >
                 <div className="p-4 max-h-[80vh] overflow-y-auto space-y-4">
                     <h1 className="text-h2">Contribute</h1>

@@ -23,7 +23,6 @@ const EventPage = async ({ params }: PageProps) => {
     }
     return (
         <div className="space-y-4 ">
-            <UsernameModal/>
             <EventHero
                 image={room.background_image_url}
                 date={room.date}
@@ -33,7 +32,9 @@ const EventPage = async ({ params }: PageProps) => {
 
             />
             <div className="p-4">
-                <RecentSouvenirs />
+                <RecentSouvenirs
+                    id={room.id}
+                />
 
 
             </div>

@@ -19,12 +19,6 @@ const PhotoGrid = ({ photos, onSelect }: {
     const rightCol = photos.map((p, i) => ({ ...p, originalIndex: i })).filter((_, i) => i % 2 === 1)
     return (
         <>
-            <div className="flex justify-between">
-                <h1 className="text-h2 text-primary">Recent Souvenirs</h1>
-                <div className="space-x-4 flex  place-items-center">
-                    <Badge className="rounded-sm" variant={'secondary'}>{photos.length} Photos</Badge>
-                </div>
-            </div>
             <div className="flex gap-4">
                 <div className="flex flex-col gap-4 flex-1">
                     {leftCol.map((photo, i) => (
