@@ -22,12 +22,12 @@ const PhotoGrid = ({ photos, onSelect }: {
             <div className="flex gap-4">
                 <div className="flex flex-col gap-4 flex-1">
                     {leftCol.map((photo, i) => (
-                        <img key={photo.id} src={photo.cloudinary_url} onClick={() => onSelect(photo.originalIndex)} className="w-full rounded-lg object-cover" />
+                        <img key={photo.id} src={photo.cloudinary_url} alt={photo.filename} onClick={() => onSelect(photo.originalIndex)} className="w-full rounded-lg object-cover" />
                     ))}
                 </div>
                 <div className="flex flex-col gap-4 flex-1">
                     {rightCol.map((photo, i) => (
-                        <img key={photo.id} src={photo.cloudinary_url} onClick={() => onSelect(photo.originalIndex)} className="w-full rounded-lg object-cover" />
+                        <img key={photo.id} src={photo.cloudinary_url} alt={photo.filename} onClick={() => onSelect(photo.originalIndex)} className="w-full rounded-lg object-cover" />
                     ))}
                 </div>
             </div>

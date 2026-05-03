@@ -7,7 +7,6 @@ import { Button } from "../ui/button"
 const UsernameModal = ({ open, onOpenChange }: { open?: boolean, onOpenChange?: (open: boolean) => void }) => {
     const [username, setUsername] = useState("")
     const [show, setShow] = useState(false)
-    console.log(open);
 
 
     useEffect(() => {

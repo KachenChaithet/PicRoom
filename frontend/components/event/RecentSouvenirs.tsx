@@ -1,18 +1,15 @@
 "use client"
-import Image from "next/image"
-import { Badge } from "../ui/badge"
 import React, { useEffect, useRef, useState } from "react"
 import { Button } from "../ui/button"
 import { ArrowLeft, ArrowRight, BadgeCheck, Camera, Check, Ellipsis, EllipsisVertical, FolderPen, ListFilter, Plus, User, X } from "lucide-react"
 import { Input } from "../ui/input"
-import * as faceapi from "face-api.js"
 import axios from "axios"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu"
 import { Spinner } from "../ui/spinner"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs"
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import PhotoGrid from "./PhotoGrid"
 import UsernameModal from "./UsernameModal"
+import { TransformWrapper, TransformComponent, ReactZoomPanPinchContentRef } from "react-zoom-pan-pinch"
 
 
 type status = "pending" | "done" | "processing"
@@ -42,15 +39,24 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
     const [username, setUsername] = useState("guest")
     const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'newest'>('newest')
 
-    const prev = () => setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
-    const next = () => setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
+
+    const transformRef = useRef<ReactZoomPanPinchContentRef>(null)
+
+    const prev = () => {
+        transformRef.current?.resetTransform()
+        setSelected(i => i !== null ? (i - 1 + visiblePhotos.length) % visiblePhotos.length : null)
+    }
+    const next = () => {
+        transformRef.current?.resetTransform()
+        setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
+    }
 
     const FetchPhotos = async () => {
+
         const res = await axios.get(`http://localhost:8000/image/room/${id}`)
 
         setPhotos(res.data)
     }
-
 
 
 
@@ -148,6 +154,15 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
         e.target.value = ""
     }
 
+    const handleDowload = (url: string, filename: string) => {
+        const name = filename.replace(/\.[^/.]+$/, '')
+        const downloadUrl = url.replace('/upload/', `/upload/fl_attachment:${name}/`)
+        const a = document.createElement('a')
+        a.href = downloadUrl
+
+        a.click()
+    }
+
     const handleDeleteImage = async (id: number) => {
         setLoading(true)
         try {
@@ -185,6 +200,14 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
             previewRef.current.forEach(url => URL.revokeObjectURL(url))
         }
     }, [])
+
+    useEffect(() => {
+        if (selected !== null) {
+            document.body.style.overflow = 'hidden'
+        } else {
+            document.body.style.overflow = ''
+        }
+    }, [selected])
 
 
 
@@ -228,22 +251,20 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                             </Button>
                             <span className="font-semibold text-muted-foreground text-body-base">All</span>
                         </div>
-                        {groups.slice(0, 3).map((group) => (
-                            <>
-                                <div className="flex flex-col items-center  gap-2">
+                        {groups.slice(0, 3).map((group, i) => (
+                            <div className="flex flex-col items-center  gap-2" key={i} >
 
-                                    <Button className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden p-0 border-4 border-neutral-300" onClick={() => setSelectedGroup(
-                                        selectedGroup === group.cluster_id ? null : group.cluster_id
-                                    )}>
-                                        <img
-                                            alt="user"
-                                            src={group.face_crop_url}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </Button>
-                                    <span className="font-semibold text-muted-foreground text-body-base">Person {group.cluster_id + 1}</span>
-                                </div>
-                            </>
+                                <Button className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden p-0 border-4 border-neutral-300" onClick={() => setSelectedGroup(
+                                    selectedGroup === group.cluster_id ? null : group.cluster_id
+                                )}>
+                                    <img
+                                        src={group.face_crop_url}
+                                        alt="user"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </Button>
+                                <span className="font-semibold text-muted-foreground text-body-base">Person {group.cluster_id + 1}</span>
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -310,7 +331,6 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                                 e.preventDefault()
                                 const droppredFiles = Array.from(e.dataTransfer.files)
 
-                                console.log(e.dataTransfer.files);
 
                                 const filtered = droppredFiles.filter(file =>
                                     !files.some(f => f.name === file.name && f.size === file.size)
@@ -351,6 +371,14 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                             <BadgeCheck className="text-green-600 " />
                             <p className="text-xs">This gallery is moderated by the event organizers.</p>
                         </div>
+
+                        <Button
+                            variant={'outline'}
+                            className="w-full"
+                            onClick={() => setShowModal(true)}
+                        >
+                            <FolderPen className="size-4 mr-2" /> Rename
+                        </Button>
                     </div>
                 ) : (
                     <div className="border p-4 rounded-2xl space-y-4">
@@ -377,6 +405,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                                     <img
                                         key={i}
                                         src={preview[i]}
+                                        alt={"preview"}
                                         className="w-34 h-34 object-cover rounded"
                                     />
                                     <h1 className="w-32 truncate text-sm">{file.name}</h1>
@@ -428,7 +457,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                         </button>
                         <button
                             className={`flex-1 flex flex-col items-center py-3 gap-1 text-xs font-medium transition-colors
-                            ${tab === 'more' ? 'text-primary' : 'text-muted-foreground'}`}
+                            ${showModal ? 'text-primary' : 'text-muted-foreground'}`}
                             onClick={() => setShowModal(true)}
                         >
                             <FolderPen className="size-4" />
@@ -485,7 +514,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                             <div className="grid grid-cols-3 gap-2">
                                 {files.map((file, i) => (
                                     <div key={i} className="relative">
-                                        <img src={preview[i]} className="w-full h-24 object-cover rounded-xl" />
+                                        <img src={preview[i]} alt="preview" className="w-full h-24 object-cover rounded-xl" />
                                         <span
                                             className="absolute top-1 right-1 bg-primary text-white rounded-full p-1"
                                             onClick={() => removeImagePreview(i)}
@@ -512,11 +541,10 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                 selected !== null && (
                     <div
                         className="bg-black/90 z-50 fixed   inset-0 flex items-center justify-center"
-                        onClick={() => setSelected(null)}
                     >
-                        <DropdownMenu>
+                        <DropdownMenu >
                             <DropdownMenuTrigger asChild>
-                                <Button className="absolute right-4 top-4 text-neutral-200" variant={'ghost'}>
+                                <Button className="absolute right-4 top-4 text-neutral-200 z-10" variant={'ghost'}>
                                     <EllipsisVertical />
                                 </Button>
                             </DropdownMenuTrigger>
@@ -525,11 +553,34 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                                 side="bottom"
                                 sideOffset={8}
                             >
+                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDowload(sortecdPhotos[selected!].cloudinary_url, sortecdPhotos[selected!].filename)}>
+                                    Dowload
+                                </DropdownMenuItem>
                                 <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(visiblePhotos[selected].id)}>
                                     Delete
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+
+
+                        <TransformWrapper
+                            ref={transformRef}
+                            initialScale={1}
+                            minScale={1}
+                            maxScale={5}
+                        >
+                            <TransformComponent
+                                wrapperStyle={{ width: '100%', height: '100%' }}
+                                contentStyle={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                                <img
+                                    src={sortecdPhotos[selected].cloudinary_url}
+                                    alt={sortecdPhotos[selected].filename}
+                                    className="object-contain max-h-screen max-w-screen"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </TransformComponent>
+                        </TransformWrapper>
                         <Button
                             onClick={(e) => { e.stopPropagation(); prev() }}
                             variant={'outline'}
@@ -537,20 +588,20 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                         >
                             <ArrowLeft />
                         </Button>
-                        <img
-                            src={sortecdPhotos[selected].cloudinary_url}
-                            className="object-contain max-h-screen max-w-screen "
-                            onClick={(e) => e.stopPropagation()}
-
-                        />
+                        <Button
+                            onClick={() => setSelected(null)}
+                            variant={'ghost'}
+                            className="absolute left-4 top-4 rounded-full  text-neutral-200"
+                        >
+                            <X />
+                        </Button>
                         <Button
                             onClick={(e) => { e.stopPropagation(); next() }}
                             variant={'outline'}
-                            className="absolute right-4"
+                            className="absolute right-4 "
                         >
                             <ArrowRight />
                         </Button>
-
 
                     </div>
                 )
