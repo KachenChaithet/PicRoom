@@ -166,6 +166,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
     const handleDeleteImage = async (id: number) => {
         setLoading(true)
         try {
+
             await axios.delete(`http://localhost:8000/image/${id}`)
             setFiles([])
             setPreview([])
@@ -556,7 +557,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
                                 <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDowload(sortecdPhotos[selected!].cloudinary_url, sortecdPhotos[selected!].filename)}>
                                     Dowload
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(visiblePhotos[selected].id)}>
+                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(sortecdPhotos[selected].id)}>
                                     Delete
                                 </DropdownMenuItem>
                             </DropdownMenuContent>

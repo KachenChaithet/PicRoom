@@ -13,8 +13,8 @@ type EventHeroProps = {
 const EventHero = ({ date, image, location, name, isLive }: EventHeroProps) => {
 
     return (
-        <div className="relative w-full h-[40vh] ">
-            <Image src={image} alt={name} priority fill className="object-cover" />
+        <div className="relative w-full h-[30vh] md:h-[40vh] ">
+            <Image src={image} alt={name} priority fill className="object-cover " />
             <div className="absolute inset-0 bg-black/50" />
             <div className="absolute bottom-6 left-6 text-neutral-100 space-y-2">
                 {isLive && (

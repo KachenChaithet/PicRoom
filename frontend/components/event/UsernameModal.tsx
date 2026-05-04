@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
 
@@ -30,6 +30,9 @@ const UsernameModal = ({ open, onOpenChange }: { open?: boolean, onOpenChange?: 
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Input your name</DialogTitle>
+                    <DialogDescription className="text-body-sm text-muted-foreground">
+                        Please enter your username to continue.
+                    </DialogDescription>
                 </DialogHeader>
                 <Input
                     value={username}
