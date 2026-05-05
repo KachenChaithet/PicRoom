@@ -34,6 +34,7 @@ const EventPage = async ({ params }: PageProps) => {
             <div className="p-4">
                 <RecentSouvenirs
                     id={room.id}
+                    slug={key}
                 />
 
 

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, UploadFile, Form
+from fastapi import APIRouter, Depends, File, UploadFile, Form,HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from schemas.image import ImageResponse,UploadResponse
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/image", tags=["image"])
 async def create_image(
     files: list[UploadFile] = File(...),
     room_id: int = Form(...),
-    username: str = Form(...),
+    guest_id: str = Form(...),
     db: AsyncSession = Depends(get_db),
 ):
     files_bytes = [await f.read() for f in files]
@@ -44,7 +44,7 @@ async def create_image(
                 cloudinary_public_id=result["public_id"],
                 cloudinary_url=result["url"],
                 room_id=room_id,
-                username=username,
+                guest_id=guest_id,
                 status="pending",
             )
             db.add(image_data)
@@ -170,10 +170,17 @@ async def get_face_groups(
 @router.get("/room/{room_id}",response_model=list[ImageResponse])
 async def get_face(
     room_id:int,
+    limit:int = 5,
+    offset:int = 0,
     db:AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
-        select(Image).where(Image.room_id == room_id)
+        select(Image)
+        .where(Image.room_id == room_id)
+        .order_by(Image.uploaded_at
+        .desc())
+        .limit(limit)
+        .offset(offset)
     )
     images = result.scalars().all()
     return images
@@ -181,6 +188,7 @@ async def get_face(
 @router.delete("/{image_id}")
 async def delete_face(
     image_id:int,
+    guest_id: str,
     db:AsyncSession = Depends(get_db)
 ):
     result = await db.execute(
@@ -190,6 +198,9 @@ async def delete_face(
     
     if not image:
         return {"message":"imaeg not found"}
+    
+    if image.guest_id != guest_id:
+        raise HTTPException(status_code=403, detail="Forbidden")
     
     delete_image(image.cloudinary_public_id)
     

@@ -8,7 +8,7 @@ class ImageCreate(BaseModel):
     cloudinary_public_id: str
     status: str
     room_id: int
-    username: str
+    guest_id: str
 
 
 class ImageResponse(ImageCreate):

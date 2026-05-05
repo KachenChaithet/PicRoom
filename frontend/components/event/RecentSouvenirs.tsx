@@ -32,12 +32,15 @@ interface Groups {
 
 
 
-const RecentSouvenirs = ({ id }: { id: string }) => {
+const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
     const [tab, setTab] = useState<'gallery' | 'upload' | 'more'>('gallery')
     const [photos, setPhotos] = useState<Photos[]>([])
     const [selected, setSelected] = useState<number | null>(null)
-    const [username, setUsername] = useState("guest")
     const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'newest'>('newest')
+    const [guestId, setGuestId] = useState("")
+
+    const [offset, setOffset] = useState(0)
+    const [hasMore, setHasMore] = useState(true)
 
 
     const transformRef = useRef<ReactZoomPanPinchContentRef>(null)
@@ -51,11 +54,15 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
         setSelected(i => i !== null ? (i + 1) % visiblePhotos.length : null)
     }
 
-    const FetchPhotos = async () => {
+    const FetchPhotos = async (currentOffset = 0) => {
 
-        const res = await axios.get(`http://localhost:8000/image/room/${id}`)
-
-        setPhotos(res.data)
+        const res = await axios.get(`http://localhost:8000/image/room/${id}?limit=5&offset=${currentOffset}`)
+        if (res.data.length < 5) setHasMore(false)
+        if (currentOffset === 0) {
+            setPhotos(res.data)
+        } else {
+            setPhotos(prev => [...prev, ...res.data])
+        }
     }
 
 
@@ -100,7 +107,8 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
         const formData = new FormData()
         files.forEach(file => formData.append("files", file))
         formData.append("room_id", id)
-        formData.append("username", username)
+
+        formData.append("guest_id", guestId)
         try {
             const res = await axios.post("http://localhost:8000/image/upload", formData)
 
@@ -167,10 +175,14 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
         setLoading(true)
         try {
 
-            await axios.delete(`http://localhost:8000/image/${id}`)
+            await axios.delete(`http://localhost:8000/image/${id}`, {
+                params: { guest_id: guestId }
+            })
             setFiles([])
             setPreview([])
-            FetchPhotos()
+            FetchPhotos(0)
+            setHasMore(true)
+            setOffset(0)
             FetchGroups()
             setSelected(null)
         } catch (error) {
@@ -210,10 +222,25 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
         }
     }, [selected])
 
+    useEffect(() => {
+        const handleScroll = () => {
+            if (selected !== null) return  // ← เพิ่มตรงนี้
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 && hasMore) {
+                setOffset(prev => {
+                    const next = prev + 5
+                    FetchPhotos(next)
+                    return next
+                })
+            }
+        }
+        window.addEventListener("scroll", handleScroll)
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [hasMore, selected])  // ← เพิ่ม selected
+
 
 
     useEffect(() => {
-        setUsername(localStorage.getItem("username") ?? "guest")
+        setGuestId(localStorage.getItem(`picroom-${slug}`) ?? "")
         FetchPhotos()
         FetchGroups()
     }, [])
@@ -222,9 +249,9 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
 
     return (
         <div className="grid md:grid-cols-3 gap-10 ">
-            <UsernameModal open={showModal} onOpenChange={setShowModal} />
+            <UsernameModal open={showModal} onOpenChange={setShowModal} onComplete={(name) => console.log(name)} roomSlug={slug} />
             {loading && (
-                <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+                <div className="fixed inset-0 bg-black/40 z-999 flex items-center justify-center">
                     <div className="text-neutral-200 px-6 py-4 rounded-xl shadow">
                         <Spinner />
                     </div>
@@ -497,7 +524,7 @@ const RecentSouvenirs = ({ id }: { id: string }) => {
 
             {/* upload mobile  */}
             <div className={`fixed inset-x-0 bottom-16 z-30 bg-background rounded-t-3xl border-t shadow-xl transition-transform duration-300 md:hidden
-                 ${tab === 'upload' ? 'translate-y-1' : 'translate-y-full'}`}
+                 ${tab === 'upload' ? 'translate-y-1' : 'translate-y-100'}`}
             >
                 <div className="p-4 max-h-[80vh] overflow-y-auto space-y-4">
                     <h1 className="text-h2">Contribute</h1>

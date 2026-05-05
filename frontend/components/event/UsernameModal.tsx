@@ -3,24 +3,56 @@ import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Input } from "../ui/input"
 import { Button } from "../ui/button"
+import axios from "axios"
 
-const UsernameModal = ({ open, onOpenChange }: { open?: boolean, onOpenChange?: (open: boolean) => void }) => {
+const UsernameModal = ({ open, onOpenChange, onComplete, roomSlug }: {
+    open?: boolean,
+    onOpenChange?: (open: boolean) => void,
+    onComplete?: (name: string) => void,
+    roomSlug: string
+
+}) => {
     const [username, setUsername] = useState("")
     const [show, setShow] = useState(false)
-
+    const [loading, setLoading] = useState(false)
 
     useEffect(() => {
-        const stored = localStorage.getItem("username")
+        const stored = localStorage.getItem(`picroom-${roomSlug}`)
 
         if (!stored) {
             setShow(true)
-
         }
     }, [])
-    const handleSubmit = () => {
-        localStorage.setItem("username", username)
-        setShow(false)
-        onOpenChange?.(false)
+    const handleSubmit = async () => {
+        try {
+            const existingId = localStorage.getItem(`picroom-${roomSlug}`)
+            if (!username.trim()) return
+            setLoading(true)
+
+            if (existingId) {
+                const res = await axios.patch(`http://localhost:8000/guest/${existingId}`, {
+                    name: username
+                })
+                alert(`username:${res.data.name}`)
+                onComplete?.(res.data.name)
+                setShow(false)
+                onOpenChange?.(false)
+            }
+            else {
+                const res = await axios.post(`http://localhost:8000/guest/${roomSlug}/auth`, {
+                    name: username
+                })
+                localStorage.setItem(`picroom-${roomSlug}`, res.data.id)
+                onComplete?.(res.data.name)
+                setShow(false)
+                onOpenChange?.(false)
+            }
+        } catch (error) {
+            alert("Something went wrong")
+        } finally {
+            setLoading(false)
+        }
+
     }
     return (
         <Dialog open={open === true || show} onOpenChange={(val) => {
@@ -39,7 +71,9 @@ const UsernameModal = ({ open, onOpenChange }: { open?: boolean, onOpenChange?: 
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder="Your name"
                 />
-                <Button onClick={handleSubmit}>Enter</Button>
+                <Button onClick={handleSubmit} disabled={loading}>
+                    {loading ? "loading..." : "Enter"}
+                </Button>
             </DialogContent>
         </Dialog>
     )
