@@ -19,6 +19,7 @@ interface Photos {
     uploaded_at: string
     room_id: number
     cloudinary_url: string
+    guest_id: string
     filename: string
     status: status
     username: string
@@ -39,7 +40,8 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
     const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'newest'>('newest')
     const [guestId, setGuestId] = useState("")
 
-    const [offset, setOffset] = useState(0)
+    const offsetRef = useRef(0)
+    const isFetchingRef = useRef(false)
     const [hasMore, setHasMore] = useState(true)
 
 
@@ -55,14 +57,20 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
     }
 
     const FetchPhotos = async (currentOffset = 0) => {
-
-        const res = await axios.get(`http://localhost:8000/image/room/${id}?limit=5&offset=${currentOffset}`)
-        if (res.data.length < 5) setHasMore(false)
-        if (currentOffset === 0) {
-            setPhotos(res.data)
-        } else {
-            setPhotos(prev => [...prev, ...res.data])
+        if (isFetchingRef.current) return
+        isFetchingRef.current = true
+        try {
+            const res = await axios.get(`http://localhost:8000/image/room/${id}?limit=5&offset=${currentOffset}`)
+            if (res.data.length < 5) setHasMore(false)
+            if (currentOffset === 0) {
+                setPhotos(res.data)
+            } else {
+                setPhotos(prev => [...prev, ...res.data])
+            }
+        } finally {
+            isFetchingRef.current = false
         }
+
     }
 
 
@@ -170,6 +178,7 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
 
         a.click()
     }
+    console.log(photos);
 
     const handleDeleteImage = async (id: number) => {
         setLoading(true)
@@ -182,7 +191,7 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
             setPreview([])
             FetchPhotos(0)
             setHasMore(true)
-            setOffset(0)
+            offsetRef.current = 0
             FetchGroups()
             setSelected(null)
         } catch (error) {
@@ -224,18 +233,15 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
 
     useEffect(() => {
         const handleScroll = () => {
-            if (selected !== null) return  // ← เพิ่มตรงนี้
-            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 && hasMore) {
-                setOffset(prev => {
-                    const next = prev + 5
-                    FetchPhotos(next)
-                    return next
-                })
+            if (selected !== null) return
+            if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 200 && hasMore && !isFetchingRef.current) {
+                offsetRef.current += 5
+                FetchPhotos(offsetRef.current)
             }
         }
         window.addEventListener("scroll", handleScroll)
         return () => window.removeEventListener("scroll", handleScroll)
-    }, [hasMore, selected])  // ← เพิ่ม selected
+    }, [hasMore, selected])
 
 
 
@@ -584,9 +590,11 @@ const RecentSouvenirs = ({ id, slug }: { id: string, slug: string }) => {
                                 <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDowload(sortecdPhotos[selected!].cloudinary_url, sortecdPhotos[selected!].filename)}>
                                     Dowload
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(sortecdPhotos[selected].id)}>
-                                    Delete
-                                </DropdownMenuItem>
+                                {sortecdPhotos[selected!].guest_id === guestId && (
+                                    <DropdownMenuItem className="text-red-500 focus:text-red-500" onClick={() => handleDeleteImage(sortecdPhotos[selected].id)}>
+                                        Delete
+                                    </DropdownMenuItem>
+                                )}
                             </DropdownMenuContent>
                         </DropdownMenu>
 

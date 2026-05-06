@@ -7,6 +7,7 @@ interface Photos {
     uploaded_at: string
     room_id: number
     cloudinary_url: string
+    guest_id: string
     filename: string
     status: status
     username: string
