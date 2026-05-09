@@ -3,16 +3,7 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
 import uuid
-
-class User(Base):
-    __tablename__ = "users"
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, nullable=False)
-    username = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    is_active = Column(Boolean, default=True)
-    rooms = relationship("Room", back_populates="owner")
+from sqlalchemy.dialects.postgresql import UUID
 
 class Guest(Base):
     __tablename__ = "guests"
@@ -30,11 +21,10 @@ class Room(Base):
     date = Column(DateTime(timezone=True), nullable=False)
     location = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(UUID(as_uuid=True), nullable=False)
     slug = Column(String, unique=True, nullable=False, default=lambda: uuid.uuid4().hex[:8])
     background_image_url = Column(String, nullable=True)
     background_image_public_id = Column(String, nullable=True)
-    owner = relationship("User", back_populates="rooms")
     images = relationship("Image", back_populates="room")
     guests = relationship("Guest", back_populates="room", cascade="all, delete-orphan")
 

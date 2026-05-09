@@ -2,8 +2,13 @@ import CreateEventSection from "@/components/dashboard/CreateEventSection"
 import FeaturedEventCard from "@/components/dashboard/FeaturedEventCard"
 import HostingStatistics from "@/components/dashboard/HostingStatistics"
 import UpcomingEventCard from "@/components/dashboard/UpcomingEventCard"
+import { createClient } from "@/lib/supabase/server"
 
-const DashboardPage = () => {
+const DashboardPage = async () => {
+    const supabase = await createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    console.log(session?.user);
+
     return (
         <div>
             <div className="">

@@ -11,7 +11,7 @@ import { Field, FieldDescription, FieldGroup, FieldLabel } from "../ui/field"
 import { Input } from "../ui/input"
 import Image from "next/image"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase/client"
 
 const loginSchema = z.object({
     email: z.string().email('อีเมลไม่ถูกต้อง'),
@@ -28,13 +28,15 @@ const LoinForm = () => {
             password: "",
         }
     })
+    const supabase = createClient()
 
 
     const onSubmit = async (data: LoginSchema) => {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: authData, error } = await supabase.auth.signInWithPassword({
             email: data.email,
             password: data.password,
         })
+
 
         if (error) {
             alert(error.message)

@@ -9,7 +9,7 @@ import { useForm } from "react-hook-form"
 import z from "zod"
 import { Button } from "../ui/button"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase/client"
 
 const registerSchema = z.object({
     username: z.string().min(2, 'ชื่อต้องมีอย่างน้อย 2 ตัว'),
@@ -27,13 +27,15 @@ const RegisterForm = () => {
             password: "",
         }
     })
+    const supabase = createClient()
 
     const onSubmit = async (data: RegisterSchema) => {
         const { error } = await supabase.auth.signUp({
             email: data.email,
             password: data.password,
             options: {
-                data: { username: data.username }
+                data: { username: data.username },
+                emailRedirectTo: `${window.location.origin}/login`
             }
         })
 
@@ -42,7 +44,6 @@ const RegisterForm = () => {
             return
         }
 
-        window.location.href = "/login"
     }
     return (
 
