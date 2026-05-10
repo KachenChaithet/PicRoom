@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends,Form,UploadFile,File,HTTPException
+from fastapi import APIRouter, Depends, Form, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from database import get_db
 from schemas.room import RoomCreate, RoomResponse
 from models import Room
-from services.cloudinary_service import upload_image_background,delete_image
+from services.cloudinary_service import upload_image_background, delete_image
 from datetime import datetime
 
 router = APIRouter(prefix="/rooms", tags=["rooms"])
@@ -12,27 +12,27 @@ router = APIRouter(prefix="/rooms", tags=["rooms"])
 
 @router.post("", response_model=RoomResponse)
 async def create_room(
-    name:str = Form(...),
-    date:datetime = Form(...),
-    location:str = Form(...),
-    background:UploadFile = File(None),
-    db: AsyncSession = Depends(get_db)
+    name: str = Form(...),
+    date: datetime = Form(...),
+    location: str = Form(...),
+    background: UploadFile = File(None),
+    db: AsyncSession = Depends(get_db),
 ):
     bg_url = None
-    bg_public_id = None 
+    bg_public_id = None
     print(background)
     if background:
         file_bytes = await background.read()
         result = await upload_image_background(file_bytes)
-        print(f'this is result:{result}')
+        print(f"this is result:{result}")
         bg_url = result["url"]
         bg_public_id = result["public_id"]
-    
+
     try:
         db_room = Room(
             name=name,
-            date = date,
-            location= location,
+            date=date,
+            location=location,
             background_image_url=bg_url,
             background_image_public_id=bg_public_id,
             owner_id="5b3febd8-15ea-4cfc-a37f-c1ab21a06641",
@@ -43,23 +43,18 @@ async def create_room(
         return db_room
     except:
         await db.rollback()
-        
+
         if bg_public_id:
             await delete_image(bg_public_id)
         raise HTTPException(status_code=500, detail="Failed to create room")
-            
 
-@router.get("/{slug}",response_model=RoomResponse)
-async def get_room(
-    slug: str,
-    db:AsyncSession = Depends(get_db)
-):
-    result = await db.execute(
-        select(Room).where(Room.slug == slug)
-    )
+
+@router.get("/{slug}", response_model=RoomResponse)
+async def get_room(slug: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Room).where(Room.slug == slug))
     room = result.scalar_one_or_none()
-    
+
     if not room:
-         raise HTTPException(status_code=404, detail="Room not found")
-    
+        raise HTTPException(status_code=404, detail="Room not found")
+
     return room

@@ -16,6 +16,7 @@ import {
     useSidebar,
 } from "../ui/sidebar"
 import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -27,13 +28,15 @@ const navItems = [
 const SidebarLayout = () => {
     const pathname = usePathname()
     const { open } = useSidebar()
+    const supabase = createClient()
+
 
     return (
-        <Sidebar collapsible="icon" className="overflow-hidden [&_span]:truncate ">
+        <Sidebar collapsible="icon" className="overflow-hidden [&_span]:truncate  ">
 
-            <SidebarHeader className="">
+            <SidebarHeader  >
 
-                <Link href={'/'}>
+                <Link href={'/'} className={`flex ${!open && "justify-center"}`}>
                     {open ? (
                         <Image
                             src="/logoipsum-custom-logo.svg"
@@ -45,15 +48,15 @@ const SidebarLayout = () => {
                         />
                     ) : (
 
-                        <Image src="/logoipsum-415.svg" width={30} height={30} alt="logo" loading="eager" />
+                        <Image src="/logoipsum-415.svg" width={20} height={20} alt="logo" loading="eager" />
                     )}
                 </Link>
             </SidebarHeader>
 
-            <SidebarContent>
+            <SidebarContent className=" ">
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu>
+                        <SidebarMenu className="flex gap-1">
                             {navItems.map((item) => (
                                 <SidebarMenuButton
                                     key={item.href}
@@ -62,9 +65,9 @@ const SidebarLayout = () => {
                                     tooltip={item.label}
                                     size={'lg'}
                                 >
-                                    <Link href={item.href}>
-                                        <item.icon className="size-6!  " />
-                                        <span>{item.label}</span>
+                                    <Link href={item.href} className={` flex ${!open && "justify-center"}`}>
+                                        <item.icon className="size-4  " />
+                                        {open && <span>{item.label}</span>}
                                     </Link>
                                 </SidebarMenuButton>
                             ))}
@@ -76,7 +79,10 @@ const SidebarLayout = () => {
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout">
+                        <SidebarMenuButton tooltip="Logout" onClick={() => {
+                            supabase.auth.signOut()
+                            window.location.href = "/login"
+                        }}>
                             <LogOut />
                             <span>Logout</span>
                         </SidebarMenuButton>

@@ -2,6 +2,7 @@ import { Bell, Settings } from "lucide-react"
 import Image from "next/image"
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar"
 import { SidebarTrigger } from "../ui/sidebar"
+import { Button } from "../ui/button"
 
 const NavbarLayout = () => {
     return (

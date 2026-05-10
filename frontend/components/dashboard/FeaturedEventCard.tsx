@@ -13,7 +13,7 @@ interface FeaturedEventCardProps {
 
 const FeaturedEventCard = ({ image, location, title, guestCount, isLive }: FeaturedEventCardProps) => {
     return (
-        <Card className="relative overflow-hidden aspect-video max-w-5xl max-h-600 group">
+        <Card className="relative overflow-hidden aspect-video max-h-140 w-full group">
             <Image
                 src={image}
                 fill
