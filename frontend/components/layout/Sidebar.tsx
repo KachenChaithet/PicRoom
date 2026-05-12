@@ -1,7 +1,13 @@
 'use client'
 
 import Image from "next/image"
-import { LayoutDashboard, CalendarDays, Image as ImageIcon, User, LogOut, QrCode } from "lucide-react"
+import {
+    LayoutDashboard,
+    CalendarDays,
+    Image as ImageIcon,
+    LogOut,
+    QrCode
+} from "lucide-react"
 import { usePathname } from "next/navigation"
 import {
     Sidebar,
@@ -30,66 +36,86 @@ const SidebarLayout = () => {
     const { open } = useSidebar()
     const supabase = createClient()
 
-
     return (
-        <Sidebar collapsible="icon" className="overflow-hidden [&_span]:truncate  ">
-
-            <SidebarHeader  >
-
-                <Link href={'/'} className={`flex ${!open && "justify-center"}`}>
+        <Sidebar
+            variant="inset"
+            collapsible="icon"
+            className="overflow-hidden border-r"
+        >
+            {/* HEADER */}
+            <SidebarHeader>
+                <Link
+                    href="/"
+                    className={`flex items-center ${!open ? "justify-center" : ""
+                        }`}
+                >
                     {open ? (
                         <Image
                             src="/logoipsum-custom-logo.svg"
                             width={120}
                             height={32}
                             alt="logo"
-                            loading="eager"
-                            style={{ width: "120px", height: "32px" }}
                         />
                     ) : (
-
-                        <Image src="/logoipsum-415.svg" width={20} height={20} alt="logo" loading="eager" />
+                        <Image
+                            src="/logoipsum-415.svg"
+                            width={24}
+                            height={24}
+                            alt="logo"
+                        />
                     )}
                 </Link>
             </SidebarHeader>
 
-            <SidebarContent className=" ">
+            {/* NAV */}
+            <SidebarContent>
                 <SidebarGroup>
                     <SidebarGroupContent>
-                        <SidebarMenu className="flex gap-1">
-                            {navItems.map((item) => (
-                                <SidebarMenuButton
-                                    key={item.href}
-                                    asChild
-                                    isActive={pathname === item.href}
-                                    tooltip={item.label}
-                                    size={'lg'}
-                                >
-                                    <Link href={item.href} className={` flex ${!open && "justify-center"}`}>
-                                        <item.icon className="size-4  " />
-                                        {open && <span>{item.label}</span>}
-                                    </Link>
-                                </SidebarMenuButton>
-                            ))}
+                        <SidebarMenu className="flex flex-col gap-1">
+                            {navItems.map((item) => {
+                                const active = pathname === item.href
+
+                                return (
+                                    <SidebarMenuItem key={item.href}>
+                                        <SidebarMenuButton
+                                            asChild
+                                            tooltip={item.label}
+                                            isActive={active}
+                                            size="lg"
+                                        >
+                                            <Link href={item.href} className={`flex items-center ${!open && "justify-center"}`}>
+                                                <item.icon className="size-4" />
+
+                                                {open && <span>{item.label}</span>}
+                                            </Link>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                )
+                            })}
                         </SidebarMenu>
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
 
+            {/* FOOTER */}
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Logout" onClick={() => {
-                            supabase.auth.signOut()
-                            window.location.href = "/login"
-                        }}>
-                            <LogOut />
-                            <span>Logout</span>
+                        <SidebarMenuButton
+                            tooltip="Logout"
+                            onClick={async () => {
+                                await supabase.auth.signOut()
+                                window.location.href = "/login"
+                            }}
+                            className="text-muted-foreground hover:bg-muted"
+                        >
+                            <LogOut className="size-4" />
+                            {open && <span>Logout</span>}
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
-        </Sidebar>
+        </Sidebar >
     )
 }
 

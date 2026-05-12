@@ -18,17 +18,17 @@ interface FeaturedEventCardProps {
 const FeaturedEventCard = ({ image, location, title, guestCount, isLive, date }: FeaturedEventCardProps) => {
     return (
         <>
-            <Card className=" overflow-hidden w-full  ">
+            <div className=" overflow-hidden w-full rounded-2xl  ">
                 <div className="relative h-140 ">
                     <Image src={image} alt={title} fill className="object-cover brightness-75 " />
                     <div className="absolute  bottom-4 left-4  p-4 flex justify-center items-center bg-primary/70 border border-primary">
-                        <span className="text-h2 text-muted">{title}</span>
+                        <span className="text-h2 text-primary-foreground">{title}</span>
                     </div>
                 </div>
-            </Card>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                    <p className="text-h2">Detail</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4  mt-4">
+                <div className="md:col-span-2 space-y-2">
+                    <p className="text-h3 ">Detail</p>
                     <Card>
                         <Table>
                             <TableBody>
@@ -55,8 +55,8 @@ const FeaturedEventCard = ({ image, location, title, guestCount, isLive, date }:
                         </Table>
                     </Card>
                 </div>
-                <div className="">
-                    <p>Ingest pipeline</p>
+                <div className=" space-y-2">
+                    <p className="text-h3 ">Ingest pipeline</p>
                     <UploadActivityChart />
                 </div>
             </div>

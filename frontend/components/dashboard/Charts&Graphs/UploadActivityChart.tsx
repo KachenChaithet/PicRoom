@@ -2,11 +2,11 @@
 
 import { TrendingUp } from "lucide-react"
 import {
+  Area,
+  AreaChart,
   CartesianGrid,
-  Line,
-  LineChart,
-  XAxis,
   ResponsiveContainer,
+  XAxis,
 } from "recharts"
 
 import {
@@ -32,6 +32,9 @@ const chartData = [
   { time: "14:00", uploads: 128 },
   { time: "15:00", uploads: 310 },
   { time: "16:00", uploads: 520 },
+  { time: "17:00", uploads: 680 },
+  { time: "18:00", uploads: 740 },
+  { time: "19:00", uploads: 590 },
 ]
 
 const chartConfig = {
@@ -48,59 +51,74 @@ export function UploadActivityChart() {
         <CardTitle className="text-base font-medium">
           Event Activity
         </CardTitle>
+
         <CardDescription>
-          Image upload activity across the event lifecycle (3-day session)
+          Image upload activity across the event lifecycle
         </CardDescription>
       </CardHeader>
 
-      {/* ✅ FIX 1: เพิ่มพื้นที่จริงให้ chart */}
       <CardContent className="h-[240px] sm:h-[260px] md:h-[300px]">
         <ChartContainer config={chartConfig} className="h-full w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <AreaChart
               data={chartData}
-              margin={{ top: 10, right: 20, left: 20, bottom: 45 }} // ✅ FIX 2
+              margin={{ top: 10, right: 12, left: 12, bottom: 0 }}
             >
-              <CartesianGrid vertical={false} opacity={0.3} />
+              <defs>
+                <linearGradient id="fillUploads" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor="var(--color-uploads)"
+                    stopOpacity={0.35}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor="var(--color-uploads)"
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
 
-              {/* ✅ FIX 3: padding + dx + ลดการโดน clip */}
+              <CartesianGrid
+                vertical={false}
+                strokeDasharray="3 3"
+                opacity={0.2}
+              />
+
               <XAxis
                 dataKey="time"
                 tickLine={false}
                 axisLine={false}
-                interval={0}
+                tickMargin={10}
                 tick={{ fontSize: 12 }}
-                angle={-25}
-                textAnchor="end"
-                height={60}
-                dx={4}
-                padding={{ left: 10, right: 10 }}
               />
 
               <ChartTooltip
                 cursor={false}
-                content={<ChartTooltipContent indicator="line" hideLabel />}
+                content={<ChartTooltipContent indicator="line" />}
               />
 
-              <Line
+              <Area
                 dataKey="uploads"
                 type="monotone"
+                fill="url(#fillUploads)"
+                fillOpacity={1}
                 stroke="var(--color-uploads)"
-                strokeWidth={2}
-                dot={false}
+                strokeWidth={2.5}
               />
-            </LineChart>
+            </AreaChart>
           </ResponsiveContainer>
         </ChartContainer>
       </CardContent>
 
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex items-center gap-2 font-medium leading-none">
-          Peak activity detected on Day 2 during main ceremony
+          Peak upload traffic during evening ceremony
           <TrendingUp className="h-4 w-4" />
         </div>
+
         <div className="leading-none text-muted-foreground">
-          Tracking guest photo uploads throughout the event timeline
+          Realtime guest media activity throughout the event
         </div>
       </CardFooter>
     </Card>

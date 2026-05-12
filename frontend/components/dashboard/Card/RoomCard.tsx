@@ -12,7 +12,7 @@ interface RoomCardProps {
 }
 const RoomCard = ({ date, image, location, title, guestCount, isLive }: RoomCardProps) => {
     return (
-        <Card className=" overflow-hidden w-full  ">
+        <div className=" overflow-hidden w-full border rounded-2xl border-muted bg-accent  ">
             <div className="relative h-48 ">
                 <Image src={image} alt={title} fill className="object-cover brightness-75 " />
             </div>
@@ -40,7 +40,7 @@ const RoomCard = ({ date, image, location, title, guestCount, isLive }: RoomCard
                     </div>
                 </div>
             </CardContent>
-        </Card>
+        </div>
     )
 }
 export default RoomCard
